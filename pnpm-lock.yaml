@@ -30,7 +30,21 @@ importers:
         specifier: ^4.1.0
         version: 4.1.11(@types/node@24.13.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(tsx@4.23.12)(yaml@2.9.0))
 
-  capture: {}
+  capture:
+    dependencies:
+      '@lrd/engine':
+        specifier: workspace:*
+        version: link:../packages/engine
+      '@lrd/schema':
+        specifier: workspace:*
+        version: link:../packages/schema
+      flatted:
+        specifier: 3.4.2
+        version: 3.4.2
+    devDependencies:
+      tsx:
+        specifier: ^4.23.0
+        version: 4.23.12
 
   packages/engine:
     dependencies:
@@ -1464,6 +1478,9 @@ packages:
   find-proc@0.1.0:
     resolution: {integrity: sha512-OaOpEYv2PiQ7SQ5LIrl+deA1XaWcxEjnpM6VuWXTUvn+teIXxeFTLDmu18/zDQpFmHN4o3oDBX+BT0AGwEhemg==}
     engines: {node: ^20.19.0 || >=22.12.0}
+
+  flatted@3.4.2:
+    resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
 
   flattie@1.1.1:
     resolution: {integrity: sha512-9UbaD6XdAL97+k/n+N7JwX46K/M6Zc6KcFYskrYL8wbBV/Uyk0CTAMY0VT+qiK5PM7AIc9aTWYtq65U7T+aCNQ==}
@@ -3556,6 +3573,8 @@ snapshots:
       picomatch: 4.0.7
 
   find-proc@0.1.0: {}
+
+  flatted@3.4.2: {}
 
   flattie@1.1.1: {}
 

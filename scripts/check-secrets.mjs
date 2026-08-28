@@ -25,6 +25,14 @@ const EXCLUDED_DIRS = new Set([
   '.wrangler',
   'test-results',
   'playwright-report',
+  // capture/.n8n/<run-id>/ is n8n's own local instance data (gitignored,
+  // ephemeral, deleted and rebuilt by every capture run) — it can contain
+  // the inert placeholder credential strings capture.mjs generates
+  // (non-secret by construction: stubhouse never validates them, nothing
+  // outside 127.0.0.1 ever sees them), which happen to be shaped enough
+  // like a real Bearer token to trip the generic pattern below. Equivalent
+  // to excluding dist/.astro/.wrangler above, not a weakening of this scan.
+  '.n8n',
 ]);
 const EXCLUDED_FILES = new Set(['scripts/check-secrets.mjs', 'pnpm-lock.yaml']);
 const BINARY_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.ico', '.woff', '.woff2', '.gif', '.pdf']);

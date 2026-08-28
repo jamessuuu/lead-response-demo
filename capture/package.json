@@ -1,7 +1,20 @@
 {
   "name": "@lrd/capture",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "M1 capture rig scaffold: a Node script plus a local stubhouse (LeadConnector / Slack / Sheets response shapes) that drives a local n8n and emits the three run files. Nothing here runs yet; see README.md.",
-  "type": "module"
+  "description": "M1 capture rig: stubhouse (local HTTP stand-ins for the GoHighLevel/Slack/Google Sheets response shapes @lrd/engine already defines) plus capture.mjs, which imports content/workflow.json into a local n8n, points its integration nodes at stubhouse, fires the webhook with the fictional Radiant Aesthetics lead, waits for the real execution to finish, and emits run.json + execution.json + attest.json into content/runs/<id>/. See README.md for exactly how the redirection works and why.",
+  "type": "module",
+  "scripts": {
+    "stubhouse": "tsx stubhouse/cli.mjs",
+    "capture:happy": "tsx capture.mjs --scenario=happy --run-id=rec-medspa-happy",
+    "capture:slack-401": "tsx capture.mjs --scenario=slack-401 --run-id=rec-medspa-slack-401"
+  },
+  "dependencies": {
+    "@lrd/engine": "workspace:*",
+    "@lrd/schema": "workspace:*",
+    "flatted": "3.4.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.0"
+  }
 }

@@ -33,6 +33,7 @@ const EXCLUDED_DIRS = new Set([
   '.wrangler',
   'test-results',
   'playwright-report',
+  '.n8n', // capture/.n8n/<run-id>/ — n8n's own local instance data, gitignored and ephemeral; see check-secrets.mjs's fuller comment
 ]);
 // This script's own comments and variable names necessarily say "API_KEY";
 // exclude both binding-check scripts from the repo-wide scan.

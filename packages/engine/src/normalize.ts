@@ -8,7 +8,7 @@ import type { NormalizedLead } from '@lrd/schema';
  * Differences from the node, on purpose: `receivedAt` comes from the engine's
  * injected clock instead of `new Date()`, so a run is reproducible.
  */
-export const PORTED_FROM_JSCODE_SHA256 = '__SET_BY_TEST__';
+export const PORTED_FROM_JSCODE_SHA256 = 'c0fd478ef6b61dd24fb3181bdfba6f260fdfdee613ea7dd3427ac82a303310f8';
 
 type Raw = Record<string, unknown>;
 

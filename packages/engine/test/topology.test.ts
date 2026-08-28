@@ -42,7 +42,7 @@ describe('parseTopology', () => {
   });
 
   it('refuses a connection to an unknown node', () => {
-    const broken = structuredClone(workflowJson) as { connections: Record<string, { main: Array<Array<{ node: string }>>> } };
+    const broken = structuredClone(workflowJson) as { connections: Record<string, { main: Array<Array<{ node: string }>> }> };
     (broken.connections['Normalize Lead'] as { main: Array<Array<{ node: string }>> }).main[0]![0]!.node = 'Ghost';
     expect(() => parseTopology(broken)).toThrow(TopologyError);
   });

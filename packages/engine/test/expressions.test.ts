@@ -54,7 +54,7 @@ describe('renderTemplate', () => {
     expect(parsed.type).toBe('SMS');
     expect(parsed.contactId).toBe('c_1');
     expect(parsed.message).toContain('https://book.example-spa.example');
-    expect(parsed.message.startsWith("Hi Ada, it's Mia")).toBe(true);
+    expect(parsed.message!.startsWith("Hi Ada, it's Mia")).toBe(true);
   });
   it('fails loudly on an undefined value instead of rendering a blank', () => {
     expect(() => renderTemplate('={{ $json.nothing.here }}', ctx)).toThrow(MissingValueError);

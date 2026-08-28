@@ -1,0 +1,7 @@
+{
+  "file": "content/workflow.json",
+  "copiedFrom": "C:/Users/admin/service-samples/automations/speed-to-lead/workflow.json",
+  "copiedOn": "2026-08-28",
+  "sha256": "b15382dd0a00d9eb8085aeae7f5d2e2ea54d38a86a3b5d5b2d0cd67ca18dfea6",
+  "note": "Copied verbatim from the base sample. The drift check compares every committed run's node list against this file. Re-copy and regenerate runs (pnpm gen:runs) when the base changes."
+}

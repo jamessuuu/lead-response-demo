@@ -1,0 +1,19 @@
+{
+  "name": "@lrd/worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hono Worker scaffold. M0 exposes GET /api/health only. /api/lead, SSE, D1 quota and Turnstile arrive at M2 and are absent, not stubbed.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "hono": "^4.13.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.0.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.127.0"
+  }
+}

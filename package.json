@@ -1,0 +1,35 @@
+{
+  "name": "lead-response-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Public demo site for the Lead Response Engine: a committed run rendered as a static, timestamped ledger, a pure simulation engine, and an honesty architecture where every label is rendered from data.",
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gen:runs": "tsx scripts/generate-runs.ts",
+    "check:runs": "tsx scripts/generate-runs.ts --check",
+    "check:drift": "tsx scripts/drift-check.ts",
+    "check:bindings": "node scripts/check-bindings.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "build": "pnpm --filter @lrd/site build",
+    "preview": "pnpm --filter @lrd/site preview",
+    "e2e": "playwright test",
+    "verify": "pnpm typecheck && pnpm test && pnpm check:runs && pnpm check:drift && pnpm check:bindings && pnpm check:secrets && pnpm build && pnpm e2e"
+  },
+  "devDependencies": {
+    "@lrd/engine": "workspace:*",
+    "@lrd/schema": "workspace:*",
+    "@playwright/test": "1.62.1",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}

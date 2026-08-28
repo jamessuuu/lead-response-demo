@@ -1,0 +1,7 @@
+{
+  "name": "@lrd/capture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "M1 capture rig scaffold: a Node script plus a local stubhouse (LeadConnector / Slack / Sheets response shapes) that drives a local n8n and emits the three run files. Nothing here runs yet; see README.md.",
+  "type": "module"
+}

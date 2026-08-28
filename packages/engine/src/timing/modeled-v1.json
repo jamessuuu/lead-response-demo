@@ -1,0 +1,88 @@
+{
+  "id": "modeled-v1",
+  "basis": "modeled",
+  "note": "Assumed per-node durations. No n8n recording exists yet; every value here is a stated assumption, not a measurement. M1 replaces this table with one derived from the raw execution export, and the run files' labels change with it.",
+  "schedulerOverheadMs": {
+    "nominal": 12,
+    "jitterPct": 40,
+    "basis": "assumed: n8n executor bookkeeping between consecutive nodes"
+  },
+  "nodes": {
+    "Lead Webhook (form / ad)": {
+      "nominal": 6,
+      "jitterPct": 40,
+      "basis": "assumed: in-process receipt of a small JSON POST, responded onReceived"
+    },
+    "Normalize Lead": {
+      "nominal": 21,
+      "jitterPct": 40,
+      "basis": "assumed: Code node sandbox spin-up plus ~40 lines of JavaScript"
+    },
+    "Enrichment (placeholder — disabled)": {
+      "nominal": 0,
+      "jitterPct": 0,
+      "basis": "disabled in workflow.json: n8n passes data through without executing"
+    },
+    "GHL: Upsert Contact": {
+      "nominal": 412,
+      "jitterPct": 35,
+      "basis": "assumed: one HTTPS round trip to services.leadconnectorhq.com from a self-hosted instance"
+    },
+    "GHL: Send Instant SMS": {
+      "nominal": 368,
+      "jitterPct": 35,
+      "basis": "assumed: one HTTPS round trip; the API queues the message and returns before carrier delivery"
+    },
+    "GHL: Send Branded Email": {
+      "nominal": 390,
+      "jitterPct": 35,
+      "basis": "assumed: one HTTPS round trip with a larger body"
+    },
+    "Notify Owner (Slack)": {
+      "nominal": 296,
+      "jitterPct": 35,
+      "basis": "assumed: one chat.postMessage round trip"
+    },
+    "Log to Google Sheets": {
+      "nominal": 540,
+      "jitterPct": 35,
+      "basis": "assumed: OAuth token check plus values.append; the slowest call in the chain"
+    },
+    "Wait 15 Minutes": {
+      "nominal": 900000,
+      "jitterPct": 0,
+      "basis": "workflow parameter (15 minutes); the engine reads the parameter, not this entry"
+    },
+    "GHL: Check for Reply": {
+      "nominal": 330,
+      "jitterPct": 35,
+      "basis": "assumed: one HTTPS GET round trip"
+    },
+    "Replied?": {
+      "nominal": 3,
+      "jitterPct": 40,
+      "basis": "assumed: in-process condition evaluation"
+    },
+    "Replied — Human Takes Over": {
+      "nominal": 1,
+      "jitterPct": 0,
+      "basis": "assumed: NoOp"
+    },
+    "Voice AI Callback (stub — configured in GHL)": {
+      "nominal": 1,
+      "jitterPct": 0,
+      "basis": "assumed: NoOp"
+    },
+    "Escalate: No Reply (Slack)": {
+      "nominal": 296,
+      "jitterPct": 35,
+      "basis": "assumed: one chat.postMessage round trip"
+    }
+  },
+  "faults": {
+    "replyCheckTimeoutMs": {
+      "value": 300000,
+      "basis": "assumed: the base workflow sets no explicit timeout on the HTTP Request node, so the node default applies; the default's exact value is unverified until the M1 capture"
+    }
+  }
+}

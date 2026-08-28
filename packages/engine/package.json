@@ -1,0 +1,20 @@
+{
+  "name": "@lrd/engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure, deterministic executor of the speed-to-lead topology (webhook -> normalize -> upsert -> sms -> email -> slack -> sheet -> wait -> reply-check -> branch -> escalate). No I/O, no DOM, no Date.now(). Same (payload, faults, seed, timingTable, clock) => byte-identical run file.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@lrd/schema": "workspace:*",
+    "zod": "^4.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

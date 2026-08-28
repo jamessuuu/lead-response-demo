@@ -1,0 +1,9 @@
+{
+  "$comment": "The base workflow ships with REPLACE_* placeholders that a real deployment fills with the client's own identifiers. The demo fills them with fictional values on the reserved .example TLD so nothing can resolve to a real system. Radiant Aesthetics is a fictional business.",
+  "REPLACE_GHL_LOCATION_ID": "loc_demo_radiant",
+  "REPLACE_BOOKING_LINK": "book.radiant-aesthetics",
+  "REPLACE_DOMAIN": "radiant-aesthetics",
+  "REPLACE_LEADS_CHANNEL": "leads",
+  "REPLACE_GOOGLE_SHEET_ID": "1DEMO-radiant-leads-log",
+  "REPLACE_CREDENTIAL_ID": "cred_demo"
+}

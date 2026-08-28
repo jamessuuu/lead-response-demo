@@ -1,0 +1,614 @@
+{
+  "name": "Speed-to-Lead — Radiant Aesthetics (demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Speed-to-Lead — Radiant Aesthetics (DEMO)\n\nDemonstration build. \"Radiant Aesthetics\" is fictional.\n\n**After import:**\n1. Re-map all credentials (GHL header auth, Slack, Google Sheets OAuth)\n2. Replace every `REPLACE_*` placeholder (GHL location ID, booking link, sheet ID, channel)\n3. Accept node typeVersion upgrades if your n8n build asks\n\n**Target:** first SMS out < 60 seconds from form submit.",
+        "height": 340,
+        "width": 400
+      },
+      "id": "sticky-overview",
+      "name": "Sticky Note — Read Me First",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -740,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1 — Capture & normalize\n\nOne webhook receives leads from the website form and Meta lead-ad forwarders. The Code node flattens inconsistent payloads into one shape: split name, E.164 phone, lowercased email, source, service interest, timestamp.\n\nThis node absorbs most real-world breakage — new form fields land here, not downstream.",
+        "height": 220,
+        "width": 460
+      },
+      "id": "sticky-stage1",
+      "name": "Sticky Note — Capture",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -300,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2 — Enrichment (placeholder, DISABLED)\n\nShips disabled on purpose — no fake vendor call. In a real engagement this slot becomes one of:\n- past-client lookup (GHL search by phone/email)\n- ad-campaign metadata join (UTM → campaign name)\n- a data-provider call if the client already pays for one\n\nDisabled nodes pass data through untouched, so the demo chain still runs end-to-end.",
+        "height": 240,
+        "width": 400
+      },
+      "id": "sticky-stage2",
+      "name": "Sticky Note — Enrichment",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        140,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 3 — GHL upsert + instant outreach\n\n`POST /contacts/upsert` so repeat enquirers update, not duplicate. Then SMS + branded email via `POST /conversations/messages` — both land in the client's normal GHL inbox so the front desk can take over any thread.\n\nAuth: GHL **Private Integration token** as header auth (`Authorization: Bearer ...`) + `Version: 2021-07-28` header. SMS deliverability requires A2P 10DLC registration (US) — done inside GHL, not here.",
+        "height": 260,
+        "width": 500
+      },
+      "id": "sticky-stage3",
+      "name": "Sticky Note — GHL Outreach",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        580,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 4 — Notify + log\n\nSlack ping tells the owner the first touch already went out (no action needed yet). Google Sheets append is the plain-English audit trail the owner can open without logging into anything.",
+        "height": 180,
+        "width": 420
+      },
+      "id": "sticky-stage4",
+      "name": "Sticky Note — Notify & Log",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 5 — Wait 15 min → replied?\n\nPolls the GHL conversation for an inbound message.\n- Replied → humans own the thread from here.\n- No reply → escalate.\n\nThe reply-check condition reads `lastMessageDirection` on the most recent conversation — verify the response shape against the current LeadConnector API on go-live.",
+        "height": 240,
+        "width": 420
+      },
+      "id": "sticky-stage5",
+      "name": "Sticky Note — Wait & Branch",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1580,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 6 — Voice AI callback (STUB — not built here)\n\nDeliberately a NoOp. GHL's Voice AI agent is configured **inside GHL** (AI Employee → Voice AI: script, guardrails, calendar access, transfer rules), not in n8n.\n\nIn production this handoff is either (a) an HTTP call that adds the contact to a GHL workflow which triggers the Voice AI callback, or (b) GHL's own no-reply automation owning this step entirely. Marked as a stub because pretending it's a built node would be theater.",
+        "height": 280,
+        "width": 460
+      },
+      "id": "sticky-stage6",
+      "name": "Sticky Note — Voice AI Stub",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2100,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "radiant-new-lead",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Lead Webhook (form / ad)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -260,
+        400
+      ],
+      "webhookId": "radiant-new-lead-demo"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize inconsistent form / ad payloads into one clean lead shape.\nconst raw = $json.body ?? $json;\nconst pick = (...keys) => {\n  for (const k of keys) {\n    if (raw[k] !== undefined && raw[k] !== null && String(raw[k]).trim() !== '') {\n      return String(raw[k]).trim();\n    }\n  }\n  return '';\n};\n\nlet firstName = pick('first_name', 'firstName');\nlet lastName = pick('last_name', 'lastName');\nconst fullName = pick('name', 'full_name', 'fullName');\nif (!firstName && fullName) {\n  const parts = fullName.split(/\\s+/);\n  firstName = parts.shift();\n  lastName = parts.join(' ');\n}\n\n// Phone → rough E.164. Demo assumes US 10-digit numbers; adjust to the client's market.\nlet phone = pick('phone', 'phone_number', 'phoneNumber', 'mobile').replace(/[^\\d+]/g, '');\nif (phone && !phone.startsWith('+')) {\n  if (phone.length === 10) phone = '+1' + phone;\n  else if (phone.length === 11 && phone.startsWith('1')) phone = '+' + phone;\n}\n\nreturn [{\n  json: {\n    firstName: firstName || 'there',\n    lastName,\n    email: pick('email', 'email_address').toLowerCase(),\n    phone,\n    source: pick('source', 'utm_source', 'form_name') || 'website-form',\n    interest: pick('service', 'interest', 'treatment') || 'a treatment',\n    receivedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "node-normalize",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://example.com/REPLACE_ME_enrichment_endpoint",
+        "options": {}
+      },
+      "id": "node-enrich",
+      "name": "Enrichment (placeholder — disabled)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        180,
+        400
+      ],
+      "disabled": true,
+      "notesInFlow": true,
+      "notes": "Placeholder. Wire a real lookup here (past-client match, campaign metadata, or a data provider). Disabled so the chain runs end-to-end without a fake call."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"firstName\": \"{{ $json.firstName }}\",\n  \"lastName\": \"{{ $json.lastName }}\",\n  \"email\": \"{{ $json.email }}\",\n  \"phone\": \"{{ $json.phone }}\",\n  \"locationId\": \"REPLACE_GHL_LOCATION_ID\",\n  \"source\": \"{{ $json.source }}\",\n  \"tags\": [\"speed-to-lead\", \"new-web-lead\"]\n}",
+        "options": {}
+      },
+      "id": "node-ghl-upsert",
+      "name": "GHL: Upsert Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_CREDENTIAL_ID",
+          "name": "GHL Private Integration (Header Auth)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $json.contact.id }}\",\n  \"message\": \"Hi {{ $('Normalize Lead').item.json.firstName }}, it's Mia at Radiant Aesthetics — thanks for asking about {{ $('Normalize Lead').item.json.interest }}. I can get you booked this week: https://REPLACE_BOOKING_LINK.example — or just reply here and I'll sort it for you.\"\n}",
+        "options": {}
+      },
+      "id": "node-ghl-sms",
+      "name": "GHL: Send Instant SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        620,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_CREDENTIAL_ID",
+          "name": "GHL Private Integration (Header Auth)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"Email\",\n  \"contactId\": \"{{ $('GHL: Upsert Contact').item.json.contact.id }}\",\n  \"subject\": \"Your Radiant Aesthetics enquiry — next step inside\",\n  \"emailFrom\": \"Mia at Radiant Aesthetics <hello@REPLACE_DOMAIN.example>\",\n  \"html\": \"<p>Hi {{ $('Normalize Lead').item.json.firstName }},</p><p>Thanks for reaching out about {{ $('Normalize Lead').item.json.interest }}. I've just texted you as well — whichever is easier.</p><p><a href=\\\"https://REPLACE_BOOKING_LINK.example\\\">Pick a consult time that suits you</a>, or reply to this email and I'll book you in personally.</p><p>— Mia, Radiant Aesthetics</p>\"\n}",
+        "options": {}
+      },
+      "id": "node-ghl-email",
+      "name": "GHL: Send Branded Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_CREDENTIAL_ID",
+          "name": "GHL Private Integration (Header Auth)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#REPLACE_LEADS_CHANNEL"
+        },
+        "text": "=New lead: {{ $('Normalize Lead').item.json.firstName }} {{ $('Normalize Lead').item.json.lastName }} ({{ $('Normalize Lead').item.json.phone }}) — asked about {{ $('Normalize Lead').item.json.interest }} via {{ $('Normalize Lead').item.json.source }}. First-touch SMS + email already sent. No action needed unless they reply.",
+        "otherOptions": {}
+      },
+      "id": "node-slack-notify",
+      "name": "Notify Owner (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1060,
+        400
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "receivedAt": "={{ $('Normalize Lead').item.json.receivedAt }}",
+            "firstName": "={{ $('Normalize Lead').item.json.firstName }}",
+            "lastName": "={{ $('Normalize Lead').item.json.lastName }}",
+            "phone": "={{ $('Normalize Lead').item.json.phone }}",
+            "email": "={{ $('Normalize Lead').item.json.email }}",
+            "interest": "={{ $('Normalize Lead').item.json.interest }}",
+            "source": "={{ $('Normalize Lead').item.json.source }}",
+            "firstTouch": "SMS + email (automated)"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "node-sheets-log",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1280,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 15,
+        "unit": "minutes"
+      },
+      "id": "node-wait",
+      "name": "Wait 15 Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        400
+      ],
+      "webhookId": "wait-resume-demo"
+    },
+    {
+      "parameters": {
+        "url": "=https://services.leadconnectorhq.com/conversations/search?locationId=REPLACE_GHL_LOCATION_ID&contactId={{ $('GHL: Upsert Contact').item.json.contact.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-ghl-checkreply",
+      "name": "GHL: Check for Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1720,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_CREDENTIAL_ID",
+          "name": "GHL Private Integration (Header Auth)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-replied",
+              "leftValue": "={{ $json.conversations && $json.conversations[0] ? $json.conversations[0].lastMessageDirection : 'none' }}",
+              "rightValue": "inbound",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-replied",
+      "name": "Replied?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1940,
+        400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "node-human-takeover",
+      "name": "Replied — Human Takes Over",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Lead replied inside 15 min. The conversation lives in the GHL inbox; front desk owns it from here."
+    },
+    {
+      "parameters": {},
+      "id": "node-voiceai-stub",
+      "name": "Voice AI Callback (stub — configured in GHL)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        500
+      ],
+      "notesInFlow": true,
+      "notes": "STUB. See sticky note: the Voice AI agent is configured inside GHL, not built in n8n. This marks the handoff point."
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#REPLACE_LEADS_CHANNEL"
+        },
+        "text": "=No reply after 15 min from {{ $('Normalize Lead').item.json.firstName }} ({{ $('Normalize Lead').item.json.phone }}). Voice AI callback triggered (GHL-side). Worth a personal follow-up if the callback doesn't land.",
+        "otherOptions": {}
+      },
+      "id": "node-slack-escalate",
+      "name": "Escalate: No Reply (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2380,
+        500
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Lead Webhook (form / ad)": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead": {
+      "main": [
+        [
+          {
+            "node": "Enrichment (placeholder — disabled)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrichment (placeholder — disabled)": {
+      "main": [
+        [
+          {
+            "node": "GHL: Upsert Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: Upsert Contact": {
+      "main": [
+        [
+          {
+            "node": "GHL: Send Instant SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: Send Instant SMS": {
+      "main": [
+        [
+          {
+            "node": "GHL: Send Branded Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: Send Branded Email": {
+      "main": [
+        [
+          {
+            "node": "Notify Owner (Slack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Owner (Slack)": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Wait 15 Minutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "GHL: Check for Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: Check for Reply": {
+      "main": [
+        [
+          {
+            "node": "Replied?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replied?": {
+      "main": [
+        [
+          {
+            "node": "Replied — Human Takes Over",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Voice AI Callback (stub — configured in GHL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice AI Callback (stub — configured in GHL)": {
+      "main": [
+        [
+          {
+            "node": "Escalate: No Reply (Slack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "SpeedToLead001",
+  "active": false
+}

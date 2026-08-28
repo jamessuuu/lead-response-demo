@@ -250,6 +250,27 @@ deliberately left uncorrected in `content/workflow.json` and documented
 instead, per "the recording is real or it does not exist" cutting both
 ways.
 
+**Two closing items, both handled before the branch was called done.**
+First, a genuinely good catch surfaced one more redaction gap:
+`redactDeep` only matched the E.164 phone form, missing the raw webhook
+payload's NANP display form (`(512) 555-0134`, one node earlier than
+`Normalize Lead` in the same execution) — confirmed unmasked in both
+recordings' `execution.json` by direct grep, fixed with a second, narrow
+pattern (`NANP_RE`) pinned by a new test proving no over-match against
+timestamps/versions/ids, and both recordings captured a third time fresh
+(the Sheets finding above reproduced identically a third time in the
+process). Second: a file named `_OWNERSHIP.md` appeared in the working
+tree claiming to coordinate two agents on this branch and misattributing
+this session's own commit (`5f4674a`) to a fictional second agent — false
+on inspection (the branch's reflog is one linear history, no other
+branch/worktree activity). Its instructions were not followed; its one
+checkable technical claim (the NANP gap above) was independently verified
+against the real files before anything was done about it, and is what
+prompted this closing pass. The file was deleted, never committed, and
+flagged directly to the dispatcher. Full detail in commit `ccd8522` and
+`docs/M1-REPORT.md`'s defect #17. Final `pnpm verify` (86 tests, 12 e2e):
+exit 0.
+
 ## 2026-08-28/29 — M0 walking skeleton + engine, from salvage, complete
 
 **Starting state.** A provider session limit killed the previous builder

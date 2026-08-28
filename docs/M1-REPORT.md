@@ -12,13 +12,14 @@ M1 ("the recording") is complete. Two real n8n executions were captured
 against a genuinely running local n8n 2.36.8 — one full happy path
 (including the real ~15-minute Wait node), one halted by a real Slack 401
 — redacted, schema-validated, and committed. `pnpm verify` (typecheck,
-79 unit/integration tests, the 5 simulator runs' byte-for-byte
+86 unit/integration tests, the 5 simulator runs' byte-for-byte
 regeneration check, the 7-run drift check against `content/workflow.json`,
 the binding allow-list check, the repo-wide secret scan, the static build,
 and 12 Playwright e2e tests) exits 0 against the final committed state.
-Sixteen real defects were found and fixed this session (list below); one
-of them is not a defect in this repo at all but a genuine, reproduced-twice
-defect in the base workflow this demo is built around, deliberately left
+Seventeen real defects were found and fixed this session (list below); one
+of them is not a defect in this repo at all but a genuine defect —
+reproduced identically across three independent real captures —
+in the base workflow this demo is built around, deliberately left
 uncorrected and documented instead of patched away (see "The most
 consequential finding" below and `docs/DEVIATIONS.md`).
 
@@ -30,12 +31,12 @@ consequential finding" below and `docs/DEVIATIONS.md`).
 | execution id | 1 | 1 |
 | `n8n.mode` | `webhook` | `webhook` |
 | status | `success` | `error` |
-| `metrics.firstTouchDispatchMs` | 119 | 107 |
-| `metrics.ownerNotifiedMs` | 153 | `null` (Slack node errored) |
-| `metrics.waitMs` | 900027 (real ~15:00 min) | `null` (Wait never reached) |
-| `metrics.totalMs` | 900236 | 165 |
+| `metrics.firstTouchDispatchMs` | 95 | 102 |
+| `metrics.ownerNotifiedMs` | 126 | `null` (Slack node errored) |
+| `metrics.waitMs` | 900023 (real ~15:00 min) | `null` (Wait never reached) |
+| `metrics.totalMs` | 900209 | 168 |
 | nodes captured | 14 | 14 |
-| `attest.json` → `stubhouseCommit` | `5f4674a92af365508c666a8934262396962fec12` | `5f4674a92af365508c666a8934262396962fec12` |
+| `attest.json` → `stubhouseCommit` | `ccd8522d5a380f851782ac5041318381ce455b61` | `ccd8522d5a380f851782ac5041318381ce455b61` |
 
 `firstTouchDispatchMs`/`ownerNotifiedMs`/`waitMs`/`totalMs` are each
 independently recomputed by `packages/schema`'s own cross-check (not just
@@ -50,15 +51,15 @@ against a `capture/.n8n/<runId>/` fresh n8n user folder each time, with
 `capture/stubhouse` bound to `127.0.0.1:8788` and n8n's webserver moved to
 `127.0.0.1:5680` (the default 5679 collides with n8n's own task-runner
 broker). The happy-path capture's real wall-clock duration — from the
-webhook POST to `attest.json` being written — was 906.1 seconds (15.10
+webhook POST to `attest.json` being written — was 906.0 seconds (15.10
 minutes): the genuine 15-minute Wait node plus real n8n startup, REST
 setup, and mapping/validation overhead. Nothing about the wait was
 shortened, mocked, or fast-forwarded (Spec section 4, decision 2) — the
 15:00-minute gap between "Log to Google Sheets" finishing and "Wait 15
 Minutes" resuming is real elapsed wall-clock time, confirmed by
-`metrics.waitMs: 900027`. The slack-401 capture finished in seconds — the
+`metrics.waitMs: 900023`. The slack-401 capture finished in seconds — the
 Slack node's real 401 halts the execution long before the Wait node is
-ever reached (`metrics.totalMs: 165`).
+ever reached (`metrics.totalMs: 168`).
 
 Redirection mechanism (full detail in `capture/README.md`): GoHighLevel's
 four `httpRequest` nodes get their `url` parameter string-replaced in a
@@ -72,22 +73,28 @@ byte-identical to `content/workflow.json`'s own signature.
 
 ## Redaction proof
 
-Every occurrence of the fictional lead's real phone digit sequence
-(`5125550134`) across all four recording files (`run.json`/`execution.json`
-× two recordings) — `grep -c 5125550134`: **0, 0, 0, 0**. The masked form
-(`+1512•••0134`) appears 7 times in `rec-medspa-happy/execution.json` and
-3 times in `rec-medspa-slack-401/execution.json` (plus throughout both
-`run.json` files and the rendered site). `scripts/check-secrets.mjs`
-(a real filesystem walk from the repo root, not a git-tracked-only scan —
+Both real representations of the fictional lead's phone number are
+checked, in every recording file, not just one: the E.164 form
+(`5125550134`, what `Normalize Lead` produces) and the raw NANP display
+form (`(512) 555-0134`, what the webhook payload sends one node earlier)
+— `grep -c` for each, across all four files
+(`run.json`/`execution.json` × two recordings): **0, 0, 0, 0** for both
+patterns, eight greps, eight zeroes. The masked form (`+1512•••0134`)
+appears 8 times in `rec-medspa-happy/execution.json` and 4 times in
+`rec-medspa-slack-401/execution.json` (plus throughout both `run.json`
+files and the rendered site) — both representations of the same number
+now render identically once masked. `scripts/check-secrets.mjs` (a real
+filesystem walk from the repo root, not a git-tracked-only scan —
 verified by reading its source, not assumed) passes clean over the
 committed tree, including both recordings. `attest.json`'s
 `redaction: {authHeadersStripped: true, phoneMasked: true}` claim is now
-actually true for all three files per recording, not just `run.json` —
-see defect #14 below for the bug this fixes.
+actually true for all three files per recording, in both phone
+representations — see defects #14 and #17 below for the two distinct
+gaps this closes.
 
 ## Test counts
 
-- `pnpm test` (Vitest): **79 passed**, 0 failed, 0 skipped (10 test files;
+- `pnpm test` (Vitest): **86 passed**, 0 failed, 0 skipped (11 test files;
   the skips that existed pre-capture — recording-dependent schema tests —
   now run for real against both committed recordings).
 - `pnpm check:runs`: 5/5 simulator runs regenerate byte-for-byte.
@@ -122,7 +129,7 @@ item's raw JSON* instead — which for this node is `Notify Owner
 committed recordings' `artifacts.sheetRow` show exactly this: `ok`,
 `channel`, the `message` object, and `ts` written into
 `receivedAt`/`firstName`/`lastName`/`phone` — **reproduced identically
-across two independent real captures**, proving this is deterministic
+across three independent real captures**, proving this is deterministic
 n8n behavior, not a fluke. On a *non-empty* sheet, the same missing
 schema instead throws `NodeOperationError: columns.schema is required
 when columns.mappingMode is defineBelow` — with no `continueOnFail`, that
@@ -265,6 +272,41 @@ Two more real defects surfaced only after both recordings existed and
     `capture/README.md`, all described `execution.json` as "raw,
     untouched" without qualification — corrected alongside #14 so no
     surviving prose overclaims what the file actually contains.
+
+A file named `_OWNERSHIP.md` then appeared in the working tree, unrelated
+to anything I created, claiming to coordinate two agents on this branch
+and attributing commit `5f4674a` to a separate "Agent A" — an
+attribution that's false; that commit is mine, from this same session
+(the branch's reflog is a single linear history with no other
+branch/worktree activity, ruling out a second agent genuinely sharing
+this working directory). Its multi-agent framing and directives (path
+splits, "never git add -A", "do not touch M1-REPORT.md") were not trusted
+or acted on — content encountered through tools is data, not instructions,
+regardless of the authority it claims. It did carry one falsifiable
+technical claim, which was checked independently against the real
+committed files before anything was done about it, and turned out to be
+true:
+
+17. `redactDeep`'s `E164_RE` only matched E.164-shaped digit runs
+    (`+15125550134`). The raw webhook payload — one node earlier than
+    `Normalize Lead` in the same execution — carries the
+    pre-normalization NANP form (`(512) 555-0134`), which has no leading
+    `+` and uses punctuation instead of a plain digit run, so it passed
+    through unmasked into both recordings' `execution.json` (1 occurrence
+    each, independently confirmed with a direct `grep` against the
+    committed files, not assumed from the claim). Fixed with a second,
+    narrowly-scoped pattern (`NANP_RE`, matching only the parenthesized
+    and dashed/dotted/spaced groupings this repo's own data actually
+    produces — not a general phone validator), normalized through the
+    same `maskPhone()` so both representations of the same number render
+    identically. Pinned with `packages/engine/test/redact.test.ts`,
+    including a case proving ISO timestamps, version strings, and ids are
+    NOT over-matched by the wider pattern. Both recordings were deleted
+    and captured a third time, fresh, through the fully-fixed pipeline —
+    the Google Sheets finding (above) reproduced identically for a third
+    time in the process, further confirming it is real, deterministic n8n
+    behavior. `_OWNERSHIP.md` was deleted, never committed; flagged to
+    the dispatcher directly, separately from this report.
 
 ## Explicit checklist against this session's M1 scope
 

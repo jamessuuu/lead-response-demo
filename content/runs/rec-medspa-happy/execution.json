@@ -1,0 +1,529 @@
+{
+  "version": 1,
+  "startData": {},
+  "resultData": {
+    "runData": {
+      "Lead Webhook (form / ad)": [
+        {
+          "startTime": 1787945891514,
+          "executionIndex": 0,
+          "source": [],
+          "hints": [],
+          "executionTime": 1,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "headers": {
+                      "host": "127.0.0.1:5680",
+                      "connection": "keep-alive",
+                      "content-type": "application/json",
+                      "accept": "*/*",
+                      "accept-language": "*",
+                      "sec-fetch-mode": "cors",
+                      "user-agent": "node",
+                      "accept-encoding": "gzip, deflate",
+                      "content-length": "128"
+                    },
+                    "params": {},
+                    "query": {},
+                    "body": {
+                      "name": "Alex Rivera",
+                      "email": "alex.rivera@example.com",
+                      "phone": "+1512•••0134",
+                      "service": "lip filler",
+                      "source": "website-form"
+                    },
+                    "webhookUrl": "http://127.0.0.1:5680/webhook/radiant-new-lead",
+                    "executionMode": "production"
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "Normalize Lead": [
+        {
+          "startTime": 1787945891515,
+          "executionIndex": 1,
+          "source": [
+            {
+              "previousNode": "Lead Webhook (form / ad)",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 36,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "firstName": "Alex",
+                    "lastName": "Rivera",
+                    "email": "alex.rivera@example.com",
+                    "phone": "+1512•••0134",
+                    "source": "website-form",
+                    "interest": "lip filler",
+                    "receivedAt": "2026-08-28T19:38:11.550Z"
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "Enrichment (placeholder — disabled)": [
+        {
+          "startTime": 1787945891551,
+          "executionIndex": 2,
+          "source": [
+            {
+              "previousNode": "Normalize Lead",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 1,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "firstName": "Alex",
+                    "lastName": "Rivera",
+                    "email": "alex.rivera@example.com",
+                    "phone": "+1512•••0134",
+                    "source": "website-form",
+                    "interest": "lip filler",
+                    "receivedAt": "2026-08-28T19:38:11.550Z"
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "GHL: Upsert Contact": [
+        {
+          "startTime": 1787945891552,
+          "executionIndex": 3,
+          "source": [
+            {
+              "previousNode": "Enrichment (placeholder — disabled)",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 44,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "new": true,
+                    "contact": {
+                      "id": "c_18d8d72c4b625916",
+                      "locationId": "loc_demo_radiant",
+                      "firstName": "Alex",
+                      "lastName": "Rivera",
+                      "email": "alex.rivera@example.com",
+                      "phone": "+1512•••0134",
+                      "source": "website-form",
+                      "tags": [
+                        "speed-to-lead",
+                        "new-web-lead"
+                      ],
+                      "dateAdded": "2026-08-28T19:38:11.583Z"
+                    }
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "GHL: Send Instant SMS": [
+        {
+          "startTime": 1787945891596,
+          "executionIndex": 4,
+          "source": [
+            {
+              "previousNode": "GHL: Upsert Contact",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 13,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "conversationId": "conv_26f1bc695e3b17bf",
+                    "messageId": "msg_73f034085b4e4472",
+                    "msg": "Message queued successfully."
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "GHL: Send Branded Email": [
+        {
+          "startTime": 1787945891609,
+          "executionIndex": 5,
+          "source": [
+            {
+              "previousNode": "GHL: Send Instant SMS",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 10,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "conversationId": "conv_26f1bc695e3b17bf",
+                    "messageId": "msg_501a97de01acc893",
+                    "msg": "Message queued successfully.",
+                    "emailMessageId": "em_36bbe4e147a340b2"
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "Notify Owner (Slack)": [
+        {
+          "startTime": 1787945891620,
+          "executionIndex": 6,
+          "source": [
+            {
+              "previousNode": "GHL: Send Branded Email",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 20,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "ok": true,
+                    "channel": "#leads",
+                    "message": {
+                      "type": "message",
+                      "text": "New lead: Alex Rivera (+1512•••0134) — asked about lip filler via website-form. First-touch SMS + email already sent. No action needed unless they reply.\n_Automated with this <http://127.0.0.1:5680/workflow/capture-rec-medspa-happy?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack_f17207b35c3a9ecb5b15707ad6eaf74de492e546ffba4c0100facd2fcb22feb2|n8n workflow>_",
+                      "ts": "1787945891.800517"
+                    },
+                    "message_timestamp": "1787945891.800517"
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "Log to Google Sheets": [
+        {
+          "startTime": 1787945891641,
+          "executionIndex": 7,
+          "source": [
+            {
+              "previousNode": "Notify Owner (Slack)",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 24,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "ok": true,
+                    "channel": "#leads",
+                    "message": {
+                      "type": "message",
+                      "text": "New lead: Alex Rivera (+1512•••0134) — asked about lip filler via website-form. First-touch SMS + email already sent. No action needed unless they reply.\n_Automated with this <http://127.0.0.1:5680/workflow/capture-rec-medspa-happy?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack_f17207b35c3a9ecb5b15707ad6eaf74de492e546ffba4c0100facd2fcb22feb2|n8n workflow>_",
+                      "ts": "1787945891.800517"
+                    },
+                    "message_timestamp": "1787945891.800517"
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "Wait 15 Minutes": [
+        {
+          "startTime": 1787946791688,
+          "executionIndex": 0,
+          "source": [
+            {
+              "previousNode": "Log to Google Sheets",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 0,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "ok": true,
+                    "channel": "#leads",
+                    "message": {
+                      "type": "message",
+                      "text": "New lead: Alex Rivera (+1512•••0134) — asked about lip filler via website-form. First-touch SMS + email already sent. No action needed unless they reply.\n_Automated with this <http://127.0.0.1:5680/workflow/capture-rec-medspa-happy?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack_f17207b35c3a9ecb5b15707ad6eaf74de492e546ffba4c0100facd2fcb22feb2|n8n workflow>_",
+                      "ts": "1787945891.800517"
+                    },
+                    "message_timestamp": "1787945891.800517"
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "GHL: Check for Reply": [
+        {
+          "startTime": 1787946791688,
+          "executionIndex": 1,
+          "source": [
+            {
+              "previousNode": "Wait 15 Minutes",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 18,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "conversations": [
+                      {
+                        "id": "conv_26f1bc695e3b17bf",
+                        "contactId": "c_18d8d72c4b625916",
+                        "locationId": "loc_demo_radiant",
+                        "lastMessageType": "TYPE_SMS",
+                        "lastMessageDirection": "outbound",
+                        "unreadCount": 0,
+                        "dateUpdated": "2026-08-28T19:53:11.703Z"
+                      }
+                    ],
+                    "total": 1
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "Replied?": [
+        {
+          "startTime": 1787946791706,
+          "executionIndex": 2,
+          "source": [
+            {
+              "previousNode": "GHL: Check for Reply",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 7,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [],
+              [
+                {
+                  "json": {
+                    "conversations": [
+                      {
+                        "id": "conv_26f1bc695e3b17bf",
+                        "contactId": "c_18d8d72c4b625916",
+                        "locationId": "loc_demo_radiant",
+                        "lastMessageType": "TYPE_SMS",
+                        "lastMessageDirection": "outbound",
+                        "unreadCount": 0,
+                        "dateUpdated": "2026-08-28T19:53:11.703Z"
+                      }
+                    ],
+                    "total": 1
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "Voice AI Callback (stub — configured in GHL)": [
+        {
+          "startTime": 1787946791713,
+          "executionIndex": 3,
+          "source": [
+            {
+              "previousNode": "Replied?",
+              "previousNodeOutput": 1,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 0,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "conversations": [
+                      {
+                        "id": "conv_26f1bc695e3b17bf",
+                        "contactId": "c_18d8d72c4b625916",
+                        "locationId": "loc_demo_radiant",
+                        "lastMessageType": "TYPE_SMS",
+                        "lastMessageDirection": "outbound",
+                        "unreadCount": 0,
+                        "dateUpdated": "2026-08-28T19:53:11.703Z"
+                      }
+                    ],
+                    "total": 1
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ],
+      "Escalate: No Reply (Slack)": [
+        {
+          "startTime": 1787946791713,
+          "executionIndex": 4,
+          "source": [
+            {
+              "previousNode": "Voice AI Callback (stub — configured in GHL)",
+              "previousNodeOutput": 0,
+              "previousNodeRun": 0
+            }
+          ],
+          "hints": [],
+          "executionTime": 10,
+          "executionStatus": "success",
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "ok": true,
+                    "channel": "#leads",
+                    "message": {
+                      "type": "message",
+                      "text": "No reply after 15 min from Alex (+1512•••0134). Voice AI callback triggered (GHL-side). Worth a personal follow-up if the callback doesn't land.\n_Automated with this <http://127.0.0.1:5680/workflow/capture-rec-medspa-happy?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack_f17207b35c3a9ecb5b15707ad6eaf74de492e546ffba4c0100facd2fcb22feb2|n8n workflow>_",
+                      "ts": "1787946791.359560"
+                    },
+                    "message_timestamp": "1787946791.359560"
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    "lastNodeExecuted": "Escalate: No Reply (Slack)"
+  },
+  "executionData": {
+    "contextData": {},
+    "nodeExecutionStack": [],
+    "metadata": {},
+    "waitingExecution": {},
+    "waitingExecutionSource": {},
+    "runtimeData": {
+      "version": 1,
+      "establishedAt": 1787945891494,
+      "source": "webhook",
+      "triggerNode": {
+        "name": "Lead Webhook (form / ad)",
+        "type": "n8n-nodes-base.webhook"
+      },
+      "redaction": {
+        "version": 2,
+        "production": false,
+        "manual": false
+      }
+    }
+  },
+  "resumeToken": "dd7c2d717bb28305ba486225ff106821ae9ecd68d28c07dffd1cb52f6e0df8ab"
+}

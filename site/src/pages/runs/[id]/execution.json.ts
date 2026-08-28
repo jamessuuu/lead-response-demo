@@ -2,13 +2,17 @@ import type { APIRoute, GetStaticPaths } from 'astro';
 import { loadRun, readExecutionRaw } from '../../../lib/runs.ts';
 
 /**
- * Serves the raw, untouched n8n execution export beside a recording (Spec
- * section 4's three-file shape; section 6's static downloads;
- * section 16, criterion 16: "downloads work: ... raw execution export").
- * Only recordings have this file — validateRunDirectory (via loadRun,
- * through the schema's REQUIRED_SIBLINGS) refuses a "recording" mode run
- * missing it, so listing a simulator id here would fail the build loudly
- * rather than serve a lie.
+ * Serves n8n's raw execution export beside a recording (Spec section 4's
+ * three-file shape; section 6's static downloads; section 16, criterion
+ * 16: "downloads work: ... raw execution export"). Structurally
+ * untouched — same shape n8n's own API returned — but phone-redacted at
+ * capture time exactly like run.json; "raw" was never meant to mean
+ * "unredacted" (capture.mjs applies the same redactDeep pass to both
+ * files before either is written). Only recordings have this file —
+ * validateRunDirectory (via loadRun, through the schema's
+ * REQUIRED_SIBLINGS) refuses a "recording" mode run missing it, so
+ * listing a simulator id here would fail the build loudly rather than
+ * serve a lie.
  */
 export const getStaticPaths: GetStaticPaths = () => [
   { params: { id: 'rec-medspa-happy' } },

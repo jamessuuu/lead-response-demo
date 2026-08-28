@@ -141,6 +141,15 @@ const artifactCards: ArtifactCard[] = [
       <h2>The audit-log row it appended</h2>
       <div class="artifact" style="margin-bottom: 2rem;">
         <span class="artifact__label">Google Sheets — Leads tab</span>
+        {
+          run.mode === 'recording' && (
+            <p class="artifact__meta" style="margin-bottom: 0.5rem;">
+              Exactly the <code>values</code> array from the real PUT request above — column labels are this
+              workflow's intent, not a guarantee of what landed in each cell. See <code>docs/DEVIATIONS.md</code> in
+              the repo if a value below looks unexpected.
+            </p>
+          )
+        }
         <table class="sheet-row">
           <tbody>
             {run.artifacts.sheetRow.map((cell) => (
@@ -158,5 +167,5 @@ const artifactCards: ArtifactCard[] = [
 
 <p class="run-downloads mono">
   <a href={`/runs/${run.id}/run.json`}>run.json</a>
-  {run.mode === 'recording' && <> · <a href={`/runs/${run.id}/execution.json`}>execution.json</a> (raw, untouched)</>}
+  {run.mode === 'recording' && <> · <a href={`/runs/${run.id}/execution.json`}>execution.json</a> (raw export, phone-redacted)</>}
 </p>

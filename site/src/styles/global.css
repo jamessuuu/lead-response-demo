@@ -492,6 +492,7 @@ table.ledger td.num {
 
 .sheet-row {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.8125rem;
 }
@@ -501,6 +502,19 @@ table.ledger td.num {
   text-align: left;
   padding: 0.15rem 0.4rem 0.15rem 0;
   vertical-align: top;
+  /* A recording's cell value is whatever n8n's real request actually
+     contained — Spec section 4's "the recording is real or it does not
+     exist" means this can be longer or shaper than the simulator's own
+     modeled shapes (see docs/DEVIATIONS.md, "the Sheets row can hold
+     whatever n8n's real request body contained"). A single unbroken
+     token (e.g. a URL with no spaces) must wrap inside its cell rather
+     than force the table — and with it the page — wider than the
+     viewport (Spec section 13, criterion 10: zero horizontal scroll). */
+  overflow-wrap: anywhere;
+}
+
+.sheet-row th {
+  width: 8rem;
 }
 
 .sheet-row th {

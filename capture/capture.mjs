@@ -29,10 +29,11 @@
 //     node; nothing here shortens or fast-forwards it (Spec section 4,
 //     decision 2).
 //  8. Reads back the raw execution (n8n-core's own `flatted` serialization
-//     — see capture/lib/build-run-file.mjs), redacts it, and writes the
-//     three files into content/runs/<run-id>/: execution.json (untouched
-//     raw export), run.json (schema v1, mapped by build-run-file.mjs),
-//     attest.json.
+//     — see capture/lib/build-run-file.mjs) and writes the three files
+//     into content/runs/<run-id>/: execution.json (n8n's own export,
+//     structurally untouched — but phone-redacted, same as run.json;
+//     "untouched" was never meant to mean "unredacted"), run.json (schema
+//     v1, mapped by build-run-file.mjs, also redacted), attest.json.
 //  9. Deactivates the workflow and stops n8n + stubhouse.
 //
 // Never touches content/workflow.json. Never writes outside this repo
@@ -45,7 +46,7 @@ import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { parse as flattedParse } from 'flatted';
-import { parseTopology } from '@lrd/engine';
+import { parseTopology, redactDeep } from '@lrd/engine';
 import { validateRunDirectory, AttestFile } from '@lrd/schema';
 import { createStubhouse } from './stubhouse/server.mjs';
 import { patchN8n } from './patch-n8n.mjs';
@@ -381,8 +382,16 @@ async function main() {
       redaction: { authHeadersStripped: true, phoneMasked: true },
     };
 
+    // execution.json is n8n's own export shape, untouched structurally —
+    // but "untouched" was never meant to mean "unredacted": attest.json
+    // claims phoneMasked:true for the whole recording, and Spec section 4
+    // requires masking at capture time regardless of which of the three
+    // files a value could end up in. redactDeep walks the raw tree the
+    // same way it walks run.json below; it does not reshape anything, it
+    // only replaces phone-shaped digit runs in place.
+    const redactedExecutionData = redactDeep(executionData);
     writeFileSync(join(outDir, 'run.json'), `${JSON.stringify(runFile, null, 2)}\n`);
-    writeFileSync(join(outDir, 'execution.json'), `${JSON.stringify(executionData, null, 2)}\n`);
+    writeFileSync(join(outDir, 'execution.json'), `${JSON.stringify(redactedExecutionData, null, 2)}\n`);
     writeFileSync(join(outDir, 'attest.json'), `${JSON.stringify(attest, null, 2)}\n`);
     rmSync(join(outDir, '_raw-execution.debug.json'), { force: true });
     rmSync(join(outDir, '_raw-stubhouse-log.debug.json'), { force: true });

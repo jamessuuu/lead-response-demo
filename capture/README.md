@@ -154,7 +154,9 @@ it, and hands the result plus stubhouse's call log to
 
 `content/runs/<id>/`: `run.json` (schema v1, `mode: "recording"`),
 `execution.json` (n8n's raw export, `flatted`-serialized exactly as
-received — untouched, offered as a download), `attest.json` (n8n version,
+received, phone-redacted the same way `run.json` is — "raw" describes the
+shape, not an exemption from redaction — offered as a download),
+`attest.json` (n8n version,
 OS, the exact capture command, the git SHA of the `stubhouse` commit that
 answered the calls, operator, date, redaction confirmation — shape defined
 in `packages/schema/src/attest.ts`).

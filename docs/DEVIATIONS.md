@@ -164,6 +164,86 @@ what Sheets does; it's the difference between a model that renders one
 artifact directly and a real HTTP client library that has to ask the API
 questions first.
 
+## The base workflow's Google Sheets node silently ignores its own column mapping on an empty sheet — and `rec-medspa-happy` proves it, on purpose left uncorrected
+
+This is the single most consequential thing the real recording found, and
+it is **left exactly as captured, not patched** — see below for why.
+
+`content/workflow.json`'s "Log to Google Sheets" node is configured with
+`columns.mappingMode: "defineBelow"` and eight explicit per-column
+expressions (`={{ $('Normalize Lead').item.json.receivedAt }}`, etc.), but
+its `columns.value.schema` array — metadata a real n8n *editor* session
+populates automatically the moment a user picks "Map Each Column
+Manually" — is `[]`. Nothing in this repo's build pipeline can populate
+that array outside the n8n UI itself, and neither `service-samples`' base
+workflow nor this repo's copy of it was ever authored inside a live n8n
+editor.
+
+Reading the installed node's real source
+(`n8n-nodes-base/dist/nodes/Google/Sheet/v2/actions/sheet/append.operation.js`,
+this capture's n8n 2.36.8) shows exactly what that empty schema does at
+runtime. Two facts, both verified by reading the code, not by guessing:
+
+1. `if (!sheetData?.length) { dataMode = 'autoMapInputData'; }` — if the
+   target sheet has **no existing rows**, n8n silently overrides
+   `columns.mappingMode` to auto-map mode, unconditionally, before the
+   node's own eight expressions are ever evaluated. `autoMapInputData`
+   then maps the *current input item's own top-level JSON fields*
+   straight to columns — and this node's direct predecessor in
+   `content/workflow.json`'s connection graph is **`Notify Owner
+   (Slack)`**, not `Normalize Lead`. `rec-medspa-happy`'s real
+   `artifacts.sheetRow` and the raw PUT body in
+   `nodes[].request.bodyPreview` for `node-sheets-log` are Slack's own
+   `chat.postMessage` response (`ok`, `channel`, the `message` object,
+   `ts`) written into the `receivedAt`/`firstName`/`lastName`/`phone`
+   columns — because that response, not the lead's own data, was `$json`
+   at the moment this node ran.
+2. On a sheet that already has rows (`sheetData.length > 0` — true for
+   this workflow on every lead after the first), that early override
+   never fires, and a few lines later:
+   `if (!Array.isArray(schema) || schema.length === 0) { throw new
+   NodeOperationError(...'columns.schema is required when
+   columns.mappingMode is defineBelow'...) }` fires instead. With no
+   `continueOnFail` set on this node (matching this workflow's pattern
+   everywhere else), that throw halts the entire execution at the
+   Sheets step — the Wait node, the reply check, and both no-reply/human
+   branches never run, for every lead after the first one.
+
+Put together: as authored, this workflow logs one lead's contact details
+by accident (against an empty sheet) and then hard-fails on every lead
+after it (against a non-empty one). The simulator never had a chance to
+catch this — `@lrd/engine` renders the Sheets artifact directly from the
+lead's own normalized fields (Spec's own modeled shape), which is exactly
+what this node's *author* intended and exactly what real n8n does not do.
+This is precisely the category of defect a recording exists to catch and
+a simulator, by construction, cannot: a real client library's runtime
+fallback behavior around a manually-authored JSON file's missing UI
+metadata.
+
+**Why `rec-medspa-happy` is not re-captured with a patched schema.** Fixing
+`content/workflow.json`'s `columns.value.schema` (or switching the node to
+`autoMapInputData` outright) would make the recording "look right" — and
+would also make it lie. Spec section 4's own rule, quoted throughout this
+repo, is "the recording is real or it does not exist"; patching the
+workflow specifically to erase a real, verified, reproducible defect from
+the one recording whose entire purpose is proving what real n8n actually
+does is the same dishonesty in the other direction. The base workflow at
+`service-samples/automations/speed-to-lead/workflow.json` is this repo's
+external reference artifact, out of scope to edit for this milestone
+regardless. `RunPanel.astro` was given one factual, always-true sentence
+for recordings pointing a reader at this file rather than silently
+rendering the row as if it were unremarkable; `table.sheet-row` was given
+`overflow-wrap: anywhere` (was previously undefined) because a real
+captured value — unlike the simulator's own short modeled strings — can
+be arbitrarily long, and the 320px zero-horizontal-scroll requirement
+(Spec section 13) has to hold regardless of what a real execution happens
+to write.
+
+Fixing the underlying workflow (populating a real `columns.schema`, most
+likely) belongs to whoever owns `service-samples/automations/speed-to-lead`,
+not to this demo repo — flagging it upstream is noted as follow-up in
+`docs/M1-REPORT.md`.
+
 ## The simulator's timing table is not swapped for the recording's real numbers
 
 `packages/engine/src/timing/modeled-v1.json`'s own note says: "M1 replaces

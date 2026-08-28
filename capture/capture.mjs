@@ -38,8 +38,7 @@
 // Never touches content/workflow.json. Never writes outside this repo
 // except capture/.n8n/<runId>/ (gitignored).
 
-import { spawn } from 'node:child_process';
-import { execSync } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -47,7 +46,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { parse as flattedParse } from 'flatted';
 import { parseTopology } from '@lrd/engine';
-import { validateRunDirectory } from '@lrd/schema';
+import { validateRunDirectory, AttestFile } from '@lrd/schema';
 import { createStubhouse } from './stubhouse/server.mjs';
 import { patchN8n } from './patch-n8n.mjs';
 import { buildCaptureWorkflow, verifyTopologyUnchanged, CREDENTIAL_ID_BY_TYPE } from './transform-workflow.mjs';
@@ -121,6 +120,13 @@ async function main() {
   if (!scenario) throw new Error(`Unknown --scenario=${scenarioName}. Expected one of: ${Object.keys(SCENARIOS).join(', ')}`);
 
   const runId = arg('run-id', `rec-medspa-${scenarioName}`);
+  // Same pattern packages/schema/src/run.ts requires of RunFile.id — belt
+  // and suspenders against a run id built into `--userId=${userId}` /
+  // `--input=${path}` args on a `shell: true` spawn below: a bad id fails
+  // here, in under a second, instead of after a real capture.
+  if (!/^[a-z0-9][a-z0-9-]{2,63}$/.test(runId)) {
+    throw new Error(`Invalid --run-id=${runId}. Expected the same shape RunFile.id requires: /^[a-z0-9][a-z0-9-]{2,63}$/.`);
+  }
   const outDir = arg('out', join(ROOT, 'content', 'runs', runId));
   const n8nPort = Number(arg('n8n-port', '5680'));
   const n8nBase = `http://127.0.0.1:${n8nPort}`;
@@ -139,119 +145,138 @@ async function main() {
   await stubhouse.start();
   log(`stubhouse listening on http://127.0.0.1:${STUBHOUSE_PORT}`);
 
-  // --- 2. Patch the local n8n install (idempotent).
-  const patchResult = patchN8n({ stubhousePort: STUBHOUSE_PORT });
-  log(`n8n patched: ${patchResult.report.map((r) => r.status).join(', ')} (${patchResult.nodesBaseDir})`);
-  if (patchResult.report.some((r) => r.status === 'missing' || r.status === 'not-found')) {
-    throw new Error('capture: patch-n8n could not confirm the Slack/Sheets redirect — refusing to capture against an unpatched install. See the patch report above.');
-  }
-
-  // --- 3. Build + verify the capture-import workflow.
-  const workflowPath = join(ROOT, 'content', 'workflow.json');
-  const workflowText = readFileSync(workflowPath, 'utf8');
-  const workflowSha256 = createHash('sha256').update(workflowText, 'utf8').digest('hex');
-  const sourceWorkflow = JSON.parse(workflowText);
-  const topology = parseTopology(sourceWorkflow);
-  const placeholdersRaw = JSON.parse(readFileSync(join(ROOT, 'content', 'placeholders.json'), 'utf8'));
-  const { $comment, ...placeholders } = placeholdersRaw;
-  const importWorkflowId = `capture-${runId}`;
-  const transformed = buildCaptureWorkflow({ workflow: sourceWorkflow, placeholders, stubhousePort: STUBHOUSE_PORT, workflowId: importWorkflowId });
-  verifyTopologyUnchanged(sourceWorkflow, transformed);
-  const importWorkflowPath = join(userFolder, 'import-workflow.json');
-  writeFileSync(importWorkflowPath, JSON.stringify(transformed, null, 2));
-
-  const webhookNode = sourceWorkflow.nodes.find((n) => n.type === 'n8n-nodes-base.webhook');
-  const webhookPath = webhookNode.parameters.path;
-
-  const notARealToken = ['local', 'capture', 'rig', 'placeholder', 'value'].join('.');
-  const credentials = [
-    { id: CREDENTIAL_ID_BY_TYPE.httpHeaderAuth, name: 'GHL Private Integration (Header Auth)', type: 'httpHeaderAuth', data: { name: 'Authorization', value: `Bearer ${notARealToken}` } },
-    { id: CREDENTIAL_ID_BY_TYPE.slackApi, name: 'Slack account', type: 'slackApi', data: { accessToken: notARealToken } },
-    {
-      id: CREDENTIAL_ID_BY_TYPE.googleSheetsOAuth2Api,
-      name: 'Google Sheets account',
-      type: 'googleSheetsOAuth2Api',
-      data: {
-        clientId: 'demo-client-id.apps.googleusercontent.com',
-        clientSecret: notARealToken,
-        accessTokenUrl: `http://127.0.0.1:${STUBHOUSE_PORT}/oauth/token`,
-        authUrl: `http://127.0.0.1:${STUBHOUSE_PORT}/oauth/authorize`,
-        oauthTokenData: {
-          access_token: 'stub-google-access-token',
-          token_type: 'Bearer',
-          expires_in: 3599,
-          refresh_token: notARealToken,
-          scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
-        },
-      },
-    },
-  ];
-  const importCredentialsPath = join(userFolder, 'import-credentials.json');
-  writeFileSync(importCredentialsPath, JSON.stringify(credentials, null, 2));
-
-  // --- 4. Spawn n8n.
-  const env = {
-    ...process.env,
-    N8N_USER_FOLDER: userFolder,
-    N8N_HOST: '127.0.0.1',
-    N8N_LISTEN_ADDRESS: '127.0.0.1',
-    N8N_PORT: String(n8nPort),
-    N8N_PROTOCOL: 'http',
-    N8N_EDITOR_BASE_URL: `${n8nBase}/`,
-    N8N_DIAGNOSTICS_ENABLED: 'false',
-    N8N_VERSION_NOTIFICATIONS_ENABLED: 'false',
-    N8N_TEMPLATES_ENABLED: 'false',
-    N8N_PERSONALIZATION_ENABLED: 'false',
-    N8N_ONBOARDING_FLOW_DISABLED: 'true',
-    N8N_HIRING_BANNER_ENABLED: 'false',
-    N8N_PUBLIC_API_DISABLED: 'true',
-    EXECUTIONS_MODE: 'regular',
-    N8N_LOG_LEVEL: 'info',
-    DB_TYPE: 'sqlite',
-  };
-  writeFileSync(logPath, ''); // truncate/create
-  const n8nProc = spawn('npx', ['--yes', 'n8n@latest', 'start'], {
-    cwd: CAPTURE_DIR,
-    env,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true,
-  });
-  const appendLog = (chunk) => {
-    try {
-      writeFileSync(logPath, chunk, { flag: 'a' });
-    } catch {
-      /* best-effort */
-    }
-  };
-  n8nProc.stdout.on('data', appendLog);
-  n8nProc.stderr.on('data', appendLog);
-
+  // The try opens HERE, immediately after stubhouse is listening, not after
+  // the patch/workflow-build/spawn steps below — every one of those can
+  // throw (the patch guard is a *designed* error path), and a throw before
+  // the try previously skipped the finally entirely, leaking a listening
+  // stubhouse (and, past the spawn, an orphaned n8n) forever. n8nProc is
+  // declared here (not `const` at the spawn site) so the finally can
+  // reference it even on a path that throws before n8n ever starts.
+  let n8nProc;
   let n8nVersion = '';
   try {
-    // --- 5. Wait for readiness, then owner setup + import + activate + fire + wait + fetch.
-    await waitFor(
-      async () => {
-        const res = await fetch(`${n8nBase}/rest/settings`).catch(() => null);
-        return res && res.ok ? true : false;
-      },
-      { timeoutMs: 120_000, intervalMs: 1000, label: `n8n REST API up at ${n8nBase}` },
-    );
-    log('n8n REST API is up.');
+    // --- 2. Patch the local n8n install (idempotent).
+    const patchResult = patchN8n({ stubhousePort: STUBHOUSE_PORT });
+    log(`n8n patched: ${patchResult.report.map((r) => r.status).join(', ')} (${patchResult.nodesBaseDir})`);
+    if (patchResult.report.some((r) => r.status === 'missing' || r.status === 'not-found')) {
+      throw new Error('capture: patch-n8n could not confirm the Slack/Sheets redirect — refusing to capture against an unpatched install. See the patch report above.');
+    }
 
+    // --- 3. Build + verify the capture-import workflow.
+    const workflowPath = join(ROOT, 'content', 'workflow.json');
+    const workflowText = readFileSync(workflowPath, 'utf8');
+    const workflowSha256 = createHash('sha256').update(workflowText, 'utf8').digest('hex');
+    const sourceWorkflow = JSON.parse(workflowText);
+    const topology = parseTopology(sourceWorkflow);
+    const placeholdersRaw = JSON.parse(readFileSync(join(ROOT, 'content', 'placeholders.json'), 'utf8'));
+    const { $comment, ...placeholders } = placeholdersRaw;
+    const importWorkflowId = `capture-${runId}`;
+    const transformed = buildCaptureWorkflow({ workflow: sourceWorkflow, placeholders, stubhousePort: STUBHOUSE_PORT, workflowId: importWorkflowId });
+    verifyTopologyUnchanged(sourceWorkflow, transformed);
+    const importWorkflowPath = join(userFolder, 'import-workflow.json');
+    writeFileSync(importWorkflowPath, JSON.stringify(transformed, null, 2));
+
+    const webhookNode = sourceWorkflow.nodes.find((n) => n.type === 'n8n-nodes-base.webhook');
+    const webhookPath = webhookNode.parameters.path;
+
+    const notARealToken = ['local', 'capture', 'rig', 'placeholder', 'value'].join('.');
+    const credentials = [
+      { id: CREDENTIAL_ID_BY_TYPE.httpHeaderAuth, name: 'GHL Private Integration (Header Auth)', type: 'httpHeaderAuth', data: { name: 'Authorization', value: `Bearer ${notARealToken}` } },
+      { id: CREDENTIAL_ID_BY_TYPE.slackApi, name: 'Slack account', type: 'slackApi', data: { accessToken: notARealToken } },
+      {
+        id: CREDENTIAL_ID_BY_TYPE.googleSheetsOAuth2Api,
+        name: 'Google Sheets account',
+        type: 'googleSheetsOAuth2Api',
+        data: {
+          clientId: 'demo-client-id.apps.googleusercontent.com',
+          clientSecret: notARealToken,
+          accessTokenUrl: `http://127.0.0.1:${STUBHOUSE_PORT}/oauth/token`,
+          authUrl: `http://127.0.0.1:${STUBHOUSE_PORT}/oauth/authorize`,
+          oauthTokenData: {
+            access_token: 'stub-google-access-token',
+            token_type: 'Bearer',
+            expires_in: 3599,
+            refresh_token: notARealToken,
+            scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+          },
+        },
+      },
+    ];
+    const importCredentialsPath = join(userFolder, 'import-credentials.json');
+    writeFileSync(importCredentialsPath, JSON.stringify(credentials, null, 2));
+
+    // --- 4. Spawn n8n.
+    const env = {
+      ...process.env,
+      N8N_USER_FOLDER: userFolder,
+      N8N_HOST: '127.0.0.1',
+      N8N_LISTEN_ADDRESS: '127.0.0.1',
+      N8N_PORT: String(n8nPort),
+      N8N_PROTOCOL: 'http',
+      N8N_EDITOR_BASE_URL: `${n8nBase}/`,
+      N8N_DIAGNOSTICS_ENABLED: 'false',
+      N8N_VERSION_NOTIFICATIONS_ENABLED: 'false',
+      N8N_TEMPLATES_ENABLED: 'false',
+      N8N_PERSONALIZATION_ENABLED: 'false',
+      N8N_ONBOARDING_FLOW_DISABLED: 'true',
+      N8N_HIRING_BANNER_ENABLED: 'false',
+      N8N_PUBLIC_API_DISABLED: 'true',
+      EXECUTIONS_MODE: 'regular',
+      N8N_LOG_LEVEL: 'info',
+      DB_TYPE: 'sqlite',
+    };
+    writeFileSync(logPath, ''); // truncate/create
+    n8nProc = spawn('npx', ['--yes', 'n8n@latest', 'start'], {
+      cwd: CAPTURE_DIR,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: true,
+    });
+    const appendLog = (chunk) => {
+      try {
+        writeFileSync(logPath, chunk, { flag: 'a' });
+      } catch {
+        /* best-effort */
+      }
+    };
+    n8nProc.stdout.on('data', appendLog);
+    n8nProc.stderr.on('data', appendLog);
+
+    // --- 5. Wait for readiness, then owner setup + import + activate + fire + wait + fetch.
+    // /rest/settings can start responding before the rest of the REST API
+    // (login/owner-setup) is actually ready — n8n answers those with a
+    // plain-text "n8n is starting up. Please wait" for a short window after
+    // /rest/settings already looks live. So the whole settings-check ->
+    // setup-or-login -> whoami sequence is retried as one unit, not just
+    // the first probe, and it's re-derived from scratch each attempt
+    // (re-reading showSetupOnFirstLoad fresh) so a partially-succeeded
+    // earlier attempt (owner already created, whoami just wasn't ready
+    // yet) is handled by the login branch on the next pass, not a crash.
     const client = createN8nRestClient(n8nBase);
-    const settings = await client.settings();
     const email = 'dispatcher@lead-response-demo.local';
     const password = randomPassword();
-    let userId;
-    if (settings.json?.data?.showSetupOnFirstLoad !== false) {
-      const setup = await client.ownerSetup({ email, firstName: 'Dispatcher', lastName: 'Agent', password });
-      if (!setup.ok) throw new Error(`owner setup failed: ${JSON.stringify(setup.json)}`);
-      userId = setup.json.data.id;
-    } else {
-      const loginRes = await client.login({ email, password });
-      if (!loginRes.ok) throw new Error('owner already set up under a different password than this fresh run generated — this should not happen with a clean user folder.');
-      userId = loginRes.json.data.id;
-    }
+    const userId = await waitFor(
+      async () => {
+        const settings = await client.settings();
+        if (!settings.ok) return false;
+        if (settings.json?.data?.showSetupOnFirstLoad !== false) {
+          const setup = await client.ownerSetup({ email, firstName: 'Dispatcher', lastName: 'Agent', password });
+          if (!setup.ok) return false;
+        } else {
+          const loginRes = await client.login({ email, password });
+          if (!loginRes.ok) return false;
+        }
+        const me = await client.me();
+        return me.ok && me.json?.data?.id ? me.json.data.id : false;
+      },
+      // 240s, not 120s: observed directly on this machine — n8n's own log
+      // showed two "Database connection timed out" retries against a
+      // freshly-created SQLite file before "Database connection recovered"
+      // on one otherwise-unremarkable run, past what 120s covered from a
+      // cold `npx n8n@latest start`. Not a capture.mjs bug; a slow-disk
+      // allowance.
+      { timeoutMs: 240_000, intervalMs: 1500, label: `n8n REST API (settings + owner setup/login + whoami) ready at ${n8nBase}` },
+    );
     log(`owner ready: userId=${userId}`);
 
     // --- CLI imports (direct DB writes, no session needed).
@@ -316,6 +341,17 @@ async function main() {
     const executionData = flattedParse(finished.data);
     const stubhouseLog = stubhouse.getLog();
     const producedAt = new Date().toISOString();
+
+    // Write the raw materials FIRST, before the mapping step that has never
+    // run against real n8n data before — a ~15-minute happy-path capture is
+    // expensive to redo, so a bug in build-run-file.mjs should never cost
+    // the actual captured execution too. Debug fixtures, not the real
+    // deliverable yet (run.json/attest.json land after RunFile validates).
+    mkdirSync(outDir, { recursive: true });
+    writeFileSync(join(outDir, '_raw-execution.debug.json'), `${JSON.stringify(executionData, null, 2)}\n`);
+    writeFileSync(join(outDir, '_raw-stubhouse-log.debug.json'), `${JSON.stringify(stubhouseLog, null, 2)}\n`);
+    log(`wrote debug fixtures to ${outDir} before mapping (in case build-run-file.mjs needs a fix)`);
+
     const runFile = buildRunFile({
       topology,
       executionData,
@@ -334,27 +370,33 @@ async function main() {
       capturedAt: producedAt,
       n8n: { version: n8nVersion, executionId: String(execRow.id), mode: 'webhook' },
       os: `${process.platform} ${process.version}`,
-      captureCommand: `node capture/capture.mjs --scenario=${scenarioName} --run-id=${runId}`,
+      // Not `node capture/capture.mjs ...` — this repo's own source imports
+      // TS files with syntax plain node's type-stripping can't handle
+      // (constructor parameter properties in execute.ts); the real
+      // reproduction command goes through tsx via this pnpm script.
+      captureCommand: `pnpm --filter @lrd/capture capture:${scenarioName}`,
       stubhouseCommit: commitSha,
       stubbed: runFile.stubbed,
       operator: 'dispatcher-agent',
       redaction: { authHeadersStripped: true, phoneMasked: true },
     };
 
-    mkdirSync(outDir, { recursive: true });
     writeFileSync(join(outDir, 'run.json'), `${JSON.stringify(runFile, null, 2)}\n`);
     writeFileSync(join(outDir, 'execution.json'), `${JSON.stringify(executionData, null, 2)}\n`);
     writeFileSync(join(outDir, 'attest.json'), `${JSON.stringify(attest, null, 2)}\n`);
+    rmSync(join(outDir, '_raw-execution.debug.json'), { force: true });
+    rmSync(join(outDir, '_raw-stubhouse-log.debug.json'), { force: true });
     log(`wrote ${outDir}`);
 
     // Validate immediately — never leave a written recording unvalidated.
     validateRunDirectory({ run: JSON.parse(readFileSync(join(outDir, 'run.json'), 'utf8')), files: ['run.json', 'execution.json', 'attest.json'] });
-    log('run.json validated against the schema.');
+    AttestFile.parse(JSON.parse(readFileSync(join(outDir, 'attest.json'), 'utf8')));
+    log('run.json and attest.json validated against the schema.');
 
     await client.patchWorkflow(importWorkflowId, { active: false }).catch(() => {});
   } finally {
     log('shutting down n8n + stubhouse...');
-    n8nProc.kill();
+    n8nProc?.kill(); // may be undefined if the throw happened before n8n ever spawned
     await killPortOwner(n8nPort).catch(() => {});
     await stubhouse.stop();
   }

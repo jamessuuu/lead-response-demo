@@ -92,24 +92,6 @@ export function createN8nRestClient(baseUrl) {
   };
 }
 
-/** Poll listExecutions/getExecution until the newest execution for workflowId is finished. */
-export async function waitForExecution(client, { workflowId, sinceMs, timeoutMs = 60_000, pollMs = 500 }) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const list = await client.listExecutions({ workflowId, limit: 5 });
-    const rows = list.json?.data?.results ?? list.json?.data ?? [];
-    const candidate = Array.isArray(rows)
-      ? rows.find((r) => new Date(r.startedAt ?? r.createdAt).getTime() >= sinceMs - 2000)
-      : undefined;
-    if (candidate) {
-      const full = await client.getExecution(candidate.id);
-      const status = full.json?.data?.status ?? full.json?.status;
-      const finished = full.json?.data?.finished ?? full.json?.finished;
-      if (finished || status === 'success' || status === 'error' || status === 'crashed') {
-        return full.json?.data ?? full.json;
-      }
-    }
-    await new Promise((r) => setTimeout(r, pollMs));
-  }
-  throw new Error(`waitForExecution: timed out after ${timeoutMs}ms waiting for a finished execution of workflow ${workflowId}`);
-}
+// No waitForExecution() here: capture.mjs polls with its own generic
+// waitFor() helper (shared with the owner-setup/readiness retry), rather
+// than a second, only-used-once bespoke polling loop living here.

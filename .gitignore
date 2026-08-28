@@ -4,6 +4,7 @@ dist/
 .wrangler/
 capture/.n8n/
 capture/*.log
+content/runs/**/_raw-*.debug.json
 .dev.vars
 .dev.vars.*
 .env

@@ -6,10 +6,14 @@
 // Google OAuth2 token-refresh stub so the Google Sheets node's OAuth2
 // credential never has to reach a real Google endpoint.
 //
-// The shapes themselves are NOT reimplemented here — every response body
-// comes from `answer()` in @lrd/engine's stubs.ts, the same function the
-// simulator calls. Real n8n and the simulator therefore agree by
-// construction: one generator, two callers (see capture/README.md).
+// The shapes @lrd/engine's stubs.ts already models are NOT reimplemented
+// here — GHL's three endpoints, Slack's chat.postMessage, and the Sheets
+// values:append shape all come from `answer()`, the same function the
+// simulator calls, so a capture and a simulator run agree by construction.
+// A real n8n Sheets node also makes several plumbing calls (resolving a
+// sheet name, reserving a row, reading current values) the simulator never
+// needs and stubs.ts has no shape for — those are answered directly below
+// in handleSheetsPlumbing(), not reinvented copies of what answer() does.
 //
 // How real node types get pointed here without editing workflow topology:
 // GHL's four HTTP Request nodes carry a literal `url` PARAMETER
@@ -24,10 +28,11 @@
 // (n8n-nodes-base.googleSheets) are "app nodes": their vendor base URL is a
 // string literal compiled into the installed n8n-nodes-base package, not a
 // workflow parameter, so there is nothing in workflow.json to edit for them
-// either way. capture/patch-n8n.mjs patches those literals (inside the
-// LOCAL, gitignored capture/.n8n-install/ package install only — see that
-// script's own header) from the real vendor hosts to this server's
-// /slack/* and /sheets/* routes. Topology is untouched either way: the node
+// either way. capture/patch-n8n.mjs patches those literals — inside the
+// LOCAL npm cache's npx-install of n8n (never anything under this repo, and
+// never a system location; see that script's own header for exactly which
+// files) — from the real vendor hosts to this server's /slack/* and
+// /sheets/* routes. Topology is untouched either way: the node
 // TYPE (n8n-nodes-base.slack / n8n-nodes-base.googleSheets) never changes,
 // only where the installed node code happens to send its HTTP request.
 //
@@ -171,7 +176,7 @@ export function createStubhouse({ port, locationId, host = '127.0.0.1', sheetTit
       properties: { sheetId: i, title, index: i, sheetType: 'GRID', gridProperties: { rowCount: 1000, columnCount: 26 } },
     }));
     const body = { sheets };
-    recordLog({ method: req.method, path: url.pathname, endpoint: 'sheets.spreadsheets.get', status: 200, fault: null, responseBody: body });
+    recordLog({ method: req.method, path: url.pathname + url.search, endpoint: 'sheets.spreadsheets.get', status: 200, fault: null, responseBody: body });
     return sendJson(res, 200, body);
   }
 
@@ -202,14 +207,14 @@ export function createStubhouse({ port, locationId, host = '127.0.0.1', sheetTit
         requests = [];
       }
       const body = { spreadsheetId: url.pathname.split('/')[3] ?? '', replies: requests.map(() => ({})) };
-      recordLog({ method: req.method, path: url.pathname, endpoint: 'sheets.spreadsheets.batchUpdate', status: 200, fault: null, requestBody: { requests }, responseBody: body });
+      recordLog({ method: req.method, path: url.pathname + url.search, endpoint: 'sheets.spreadsheets.batchUpdate', status: 200, fault: null, requestBody: { requests }, responseBody: body });
       sendJson(res, 200, body);
       return true;
     }
     if (req.method === 'GET' && VALUES_RANGE_RE.test(restPath)) {
       // Always answered as empty: see the doc comment above.
       const body = { range: decodeURIComponent(restPath.split('/values/')[1] ?? ''), majorDimension: 'ROWS' };
-      recordLog({ method: req.method, path: url.pathname, endpoint: 'sheets.values.get', status: 200, fault: null, responseBody: body });
+      recordLog({ method: req.method, path: url.pathname + url.search, endpoint: 'sheets.values.get', status: 200, fault: null, responseBody: body });
       sendJson(res, 200, body);
       return true;
     }
@@ -230,7 +235,7 @@ export function createStubhouse({ port, locationId, host = '127.0.0.1', sheetTit
         updatedColumns: cols,
         updatedCells: values.length * cols,
       };
-      recordLog({ method: req.method, path: url.pathname, endpoint: 'sheets.values.update', status: 200, fault: null, requestBody: { values }, responseBody: body });
+      recordLog({ method: req.method, path: url.pathname + url.search, endpoint: 'sheets.values.update', status: 200, fault: null, requestBody: { values }, responseBody: body });
       sendJson(res, 200, body);
       return true;
     }
@@ -248,7 +253,7 @@ export function createStubhouse({ port, locationId, host = '127.0.0.1', sheetTit
     try {
       endpoint = classifyEndpoint(req.method, fullUrl);
     } catch {
-      recordLog({ method: req.method, path: url.pathname, endpoint: null, status: 404, fault: state.fault });
+      recordLog({ method: req.method, path: url.pathname + url.search, endpoint: null, status: 404, fault: state.fault });
       return sendJson(res, 404, { error: `stubhouse has no stub for ${req.method} ${fullUrl}` });
     }
 
@@ -260,18 +265,18 @@ export function createStubhouse({ port, locationId, host = '127.0.0.1', sheetTit
       try {
         bodyJson = raw ? JSON.parse(raw) : {};
       } catch {
-        recordLog({ method: req.method, path: url.pathname, endpoint, status: 400, fault: state.fault });
+        recordLog({ method: req.method, path: url.pathname + url.search, endpoint, status: 400, fault: state.fault });
         return sendJson(res, 400, { error: 'invalid JSON body' });
       }
     }
 
     if (state.fault === 'slack401' && endpoint === 'slack.chat.postMessage') {
-      recordLog({ method: req.method, path: url.pathname, endpoint, status: 401, fault: 'slack401', requestBody: bodyJson, responseBody: FAULT_BODIES.slack401 });
+      recordLog({ method: req.method, path: url.pathname + url.search, endpoint, status: 401, fault: 'slack401', requestBody: bodyJson, responseBody: FAULT_BODIES.slack401 });
       return sendJson(res, 401, FAULT_BODIES.slack401);
     }
 
     const result = answer({ endpoint, body: bodyJson, completedAtMs: Date.now() }, state, prng);
-    recordLog({ method: req.method, path: url.pathname, endpoint, status: result.status, fault: null, requestBody: bodyJson, responseBody: result.body });
+    recordLog({ method: req.method, path: url.pathname + url.search, endpoint, status: result.status, fault: null, requestBody: bodyJson, responseBody: result.body });
     return sendJson(res, result.status, result.body);
   }
 
@@ -282,7 +287,7 @@ export function createStubhouse({ port, locationId, host = '127.0.0.1', sheetTit
 
     const done = (promise) =>
       promise.catch((err) => {
-        recordLog({ method: req.method ?? '', path: url.pathname, endpoint: null, status: 500, fault: state.fault });
+        recordLog({ method: req.method ?? '', path: url.pathname + url.search, endpoint: null, status: 500, fault: state.fault });
         sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) });
       });
 
@@ -292,7 +297,7 @@ export function createStubhouse({ port, locationId, host = '127.0.0.1', sheetTit
       const restPath = `/${segments.slice(1).join('/')}`;
       return done(handleVendor(req, res, url, service, restPath));
     }
-    recordLog({ method: req.method ?? '', path: url.pathname, endpoint: null, status: 404, fault: state.fault });
+    recordLog({ method: req.method ?? '', path: url.pathname + url.search, endpoint: null, status: 404, fault: state.fault });
     return sendJson(res, 404, { error: `unknown stubhouse route ${url.pathname}` });
   });
 

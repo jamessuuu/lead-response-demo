@@ -37,15 +37,53 @@ const EXPECTED_CALLS = {
   'node-slack-escalate': 1,
 };
 
-function popCalls(queue, spec) {
+/** Which stubhouse routing prefix each of the above node ids is only ever allowed to consume calls from. */
+const SERVICE_FOR_NODE = {
+  'node-ghl-upsert': 'ghl',
+  'node-ghl-sms': 'ghl',
+  'node-ghl-email': 'ghl',
+  'node-slack-notify': 'slack',
+  'node-sheets-log': 'sheets',
+  'node-ghl-checkreply': 'ghl',
+  'node-slack-escalate': 'slack',
+};
+
+/** stubhouse's routing prefix for a logged call's path ("ghl" | "slack" | "sheets" | "oauth" | something unrecognized). */
+function serviceOf(path) {
+  return path.split('/').filter(Boolean)[0];
+}
+
+/**
+ * Only the three vendor-routed prefixes ever belong to a node's own call
+ * count — the OAuth2 refresh fallback (`/oauth/token`) and any unclassified
+ * 404 (an unexpected route, or `/_stubhouse/*` admin traffic if it were
+ * ever logged) must never be sitting in the queue where a node's own
+ * popCalls could mistake it for one of its real calls.
+ */
+function relevantCalls(stubhouseLog) {
+  return stubhouseLog.filter((c) => ['ghl', 'slack', 'sheets'].includes(serviceOf(c.path)));
+}
+
+function popCalls(queue, nodeId) {
+  const spec = EXPECTED_CALLS[nodeId];
   if (!spec) return [];
+  const expectedService = SERVICE_FOR_NODE[nodeId];
+  const out = [];
+  const take = () => {
+    const call = queue.shift();
+    if (serviceOf(call.path) !== expectedService) {
+      throw new Error(
+        `build-run-file: expected ${nodeId}'s next stubhouse call to be a "${expectedService}" call, got "${call.path}". ` +
+          'The node-to-call matching (EXPECTED_CALLS) has drifted from what stubhouse actually logged for this execution.',
+      );
+    }
+    out.push(call);
+  };
   if (spec === 'sheets') {
-    const out = [];
-    while (queue.length > 0 && queue[0].path.startsWith('/sheets/')) out.push(queue.shift());
+    while (queue.length > 0 && serviceOf(queue[0].path) === 'sheets') take();
     return out;
   }
-  const out = [];
-  for (let i = 0; i < spec && queue.length > 0; i++) out.push(queue.shift());
+  for (let i = 0; i < spec && queue.length > 0; i++) take();
   return out;
 }
 
@@ -110,10 +148,22 @@ const ORIGIN_FOR = {
  */
 export function buildRunFile({ topology, executionData, stubhouseLog, runId, scenario, workflowSha256, producedAt, n8nInfo }) {
   const runData = executionData.resultData?.runData ?? {};
-  const callQueue = stubhouseLog.map((c) => ({ ...c }));
+  const callQueue = relevantCalls(stubhouseLog).map((c) => ({ ...c }));
 
   const nodes = [];
   const artifacts = { sms: null, email: null, slack: null, sheetRow: null, slackEscalation: null, errorWorkflow: null };
+  // Tracks the previous ran node's finish time. Needed for exactly one
+  // thing: n8n's own runData for a Wait node reports `startTime` as the
+  // RESUME moment (when the executor picked the workflow back up), with
+  // `executionTime` ~0 — not the moment it began waiting. Verified against
+  // this repo's own first real capture: the gap between "Log to Google
+  // Sheets" finishing and "Wait 15 Minutes"'s reported startTime was
+  // 900018ms — essentially exactly the real 15-minute parameter, while the
+  // Wait node's OWN startTime/executionTime pair collapses to 0ms. Using
+  // the previous node's finish as the Wait node's effective start is what
+  // makes metrics.waitMs (and the Spec section 4 arithmetic check) reflect
+  // the real elapsed wait instead of the resume instant.
+  let lastFinishMs = null;
 
   for (const tnode of topology.nodes) {
     const base = { id: tnode.id, name: tnode.name, type: tnode.type, typeVersion: tnode.typeVersion };
@@ -145,15 +195,17 @@ export function buildRunFile({ topology, executionData, stubhouseLog, runId, sce
     }
 
     const task = runs[0];
-    const startMs = task.startTime;
+    // See the file-level comment above lastFinishMs: the Wait node's own
+    // reported startTime is its resume instant, not when it began waiting.
+    const startMs = tnode.id === 'node-wait' && lastFinishMs !== null ? lastFinishMs : task.startTime;
     const durationMs = task.executionTime ?? 0;
-    const finishMs = startMs + durationMs;
+    const finishMs = tnode.id === 'node-wait' ? task.startTime + durationMs : startMs + durationMs;
     const errored = Boolean(task.error);
     const origin = ORIGIN_FOR[tnode.id];
     // Only a node that actually ran can have made HTTP calls — popped here,
     // not unconditionally for every topology node, so a halted execution's
     // untouched tail never mis-consumes calls that don't belong to it.
-    const calls = popCalls(callQueue, EXPECTED_CALLS[tnode.id]);
+    const calls = popCalls(callQueue, tnode.id);
     const lastCall = calls[calls.length - 1];
 
     let summary = '';
@@ -212,7 +264,7 @@ export function buildRunFile({ topology, executionData, stubhouseLog, runId, sce
         request = requestOf(lastCall, origin);
         if (errored) {
           error = mapError(task.error);
-          response = lastCall ? { status: lastCall.status, preview: preview(JSON.stringify(lastCall.responseBody ?? {})) } : undefined;
+          response = responseOf(lastCall);
           summary = `Failed: ${error?.message ?? 'Slack rejected the request.'} The execution stopped here (n8n default: no continue-on-fail).`;
         } else {
           response = responseOf(lastCall);
@@ -255,9 +307,18 @@ export function buildRunFile({ topology, executionData, stubhouseLog, runId, sce
         break;
       }
       case 'node-if-replied': {
-        const out = jsonOf(task);
+        // n8n's If node reports two output branches in data.main:
+        // [trueItems, falseItems]. jsonOf() (main[0][0].json) is wrong here
+        // whenever the false branch is the one that actually carried data —
+        // exactly the no-reply case, main[0] is an empty array. Which
+        // branch is non-empty IS the true/false verdict; read the item from
+        // that branch, not from a hardcoded index.
+        const branches = task?.data?.main ?? [];
+        const trueItems = branches[0] ?? [];
+        const falseItems = branches[1] ?? [];
+        const replied = trueItems.length > 0;
+        const out = (replied ? trueItems : falseItems)[0]?.json;
         const direction = out?.conversations?.[0]?.lastMessageDirection ?? 'none';
-        const replied = String(direction).toLowerCase() === 'inbound';
         summary = `Evaluated Replied? as ${replied}: lastMessageDirection was "${direction}", so the execution continued on the ${replied ? 'human-takeover' : 'no-reply'} branch.`;
         break;
       }
@@ -285,6 +346,7 @@ export function buildRunFile({ topology, executionData, stubhouseLog, runId, sce
       ...(response ? { response } : {}),
       ...(error ? { error } : {}),
     });
+    lastFinishMs = finishMs;
 
     if (errored) {
       artifacts.errorWorkflow = {

@@ -3,10 +3,15 @@ import Base from '../layouts/Base.astro';
 import { loadRun } from '../lib/runs.ts';
 import { formatSeconds, numberFlag } from '@lrd/schema';
 
-const run = loadRun('sim-medspa-happy');
+// The hero number reads from the real recording, not the simulator, now
+// that one exists (M1) — Spec section 2 calls the recording "the only
+// artefact that proves n8n *ran*"; numberFlag() renders "measured", not
+// "modeled", for a recording, and that stronger, truer claim belongs on
+// the first thing a visitor sees.
+const run = loadRun('rec-medspa-happy');
 const dispatchMs = run.metrics.firstTouchDispatchMs;
 if (dispatchMs === null) {
-  throw new Error('index.astro: sim-medspa-happy has no firstTouchDispatchMs — the hero number has nothing to render.');
+  throw new Error('index.astro: rec-medspa-happy has no firstTouchDispatchMs — the hero number has nothing to render.');
 }
 const headline = formatSeconds(dispatchMs);
 const flag = numberFlag(run);
@@ -14,7 +19,7 @@ const flag = numberFlag(run);
 
 <Base
   title="Lead Response Engine — demo"
-  description="HBR: the average business takes 42 hours to answer a web lead. This system dispatches the first touch in under a second of simulated time. See exactly what's real, stubbed, and simulated."
+  description="HBR: the average business takes 42 hours to answer a web lead. This system dispatches the first touch in under a second — a real, measured n8n execution. See exactly what's real, stubbed, and simulated."
 >
   <section class="hero">
     <p class="hero__eyebrow">
@@ -26,7 +31,7 @@ const flag = numberFlag(run);
     <p class="hero__number" aria-label={`${headline} first-touch dispatch time`}>
       {headline}<small>first touch</small>
     </p>
-    <p class="hero__flag">{flag} — from content/runs/sim-medspa-happy/run.json</p>
+    <p class="hero__flag">{flag} — from content/runs/{run.id}/run.json</p>
     <p class="hero__lede">
       A fictional med-spa lead comes in from a website form at 9pm, after the front desk has gone home. Watch the
       exact system that answers it — every timestamp, every message it composed, and exactly which parts are real
@@ -38,12 +43,13 @@ const flag = numberFlag(run);
   <ul class="honesty-list">
     <li><strong>Radiant Aesthetics is fictional.</strong> Invented for this demo; no such business exists.</li>
     <li>
-      <strong>This run is a simulator, not a recording.</strong> No real n8n execution exists yet (milestone M1) —
-      <code>/demo</code> says so above the fold, from the same data this page reads.
+      <strong>This number is measured, not modeled.</strong> A real, local n8n instance executed this workflow —
+      <code>/demo</code> shows the full execution log, and the raw export downloads from there.
     </li>
     <li>
-      <strong>Nothing was sent to anyone.</strong> GoHighLevel, Slack, and Google Sheets are stand-ins in every run
-      committed so far; the messages you'll see were composed and then went nowhere.
+      <strong>Nothing was sent to anyone.</strong> GoHighLevel, Slack, and Google Sheets were stand-ins for this
+      capture (a local <code>stubhouse</code>, never a real account) — the messages you'll see were composed and then
+      went nowhere. <code>/limits</code> names every one.
     </li>
   </ul>
 </Base>

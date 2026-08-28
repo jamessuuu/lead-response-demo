@@ -36,20 +36,27 @@ gain. If a future Astro upgrade makes that coupling clearly safe, this can
 switch; nothing about the run files or the schema needs to change either
 way.
 
-## `/demo` renders one run, not all five
+## `/demo` renders two runs (M1), not all seven
 
-`content/runs/` holds five committed, golden-tested runs (happy + all four
-seams — Spec section 15's M0 row and this session's own build brief both
-call for exactly this). Only `sim-medspa-happy` is wired into a page.
-This matches the spec's own M0 acceptance line precisely — "`/` + `/demo`
-rendering **one committed run** as a static table" — while the
+**At M0:** `content/runs/` held five committed, golden-tested simulator
+runs (happy + all four seams). Only `sim-medspa-happy` was wired into a
+page, matching the spec's own M0 acceptance line precisely — "`/` +
+`/demo` rendering **one committed run** as a static table."
+
+**At M1:** two real recordings joined the five simulator runs (seven
+total). `/demo` now renders **two** — `rec-medspa-happy` (Recording tab,
+default) and `sim-medspa-happy` (Simulator tab) — via the zero-JS tab
+switcher (see this file's M1 entry below). `rec-medspa-slack-401` is
+linked (both downloads) but has no ledger page of its own yet; the other
+four simulator seams remain data + engine test coverage only. The
 recording-tabs / simulator / break-it-controls surface that would expose
-the other four is explicitly later scope (Spec section 10, Information
-architecture: tabs and break-it controls are M2/M3). The other four are
-not vaporware: `packages/engine/test/golden/` golden-traces all of them,
-`scripts/drift-check.ts` validates all of them against
-`content/workflow.json`, and they regenerate byte-identical under
-`pnpm check:runs`. They are simply not yet linked from a page.
+every scenario interactively is still later scope (Spec section 10:
+tabs are M1+, break-it controls are M2/M3 — this build ships the tabs,
+not yet the controls). None of the unlinked five are vaporware:
+`packages/engine/test/golden/` golden-traces all four simulator seams,
+`scripts/drift-check.ts` validates all seven runs (simulator and
+recording alike) against `content/workflow.json`, and the five simulator
+runs regenerate byte-identical under `pnpm check:runs`.
 
 ## `astro.config.mjs` has no `site` (canonical URL)
 
@@ -78,6 +85,113 @@ started; the implementation matches that pre-existing scope note. M0's
 `/api/health` returns an honest `{ bindings: { db: false, turnstileSecret:
 false } }` instead of pretending to ping a database binding that does not
 exist in `worker/wrangler.jsonc` yet.
+
+## M1: the animated, keyboard-walkable player is deferred to M2
+
+Spec section 15's M1 row bundles "player island" and "a11y pass logged"
+into the same milestone as the capture rig itself. This session's build
+brief scoped M1 more narrowly: the capture rig (`capture/`, `stubhouse`,
+two real recordings) plus a **static, zero-JS** Recording tab on `/demo` —
+explicitly "still JS-free for the table view." The two scopes conflict on
+exactly one point (animated/interactive playback), and the narrower brief
+governs this build. Reasoning, not just deference: the animated player
+implies compressed/sped-up playback of the real 15-minute wait, which is
+squarely M2 territory once SSE and the break-it controls exist (Spec
+section 10 already places "break-it controls" at M2/M3); building it now
+would mean either JS on `/demo` before the JS budget section (13) is
+formally gated, or a half-built player with no interactivity to justify it.
+`/demo`'s tab switcher (Recording ⇄ Simulator) is a CSS-only radio/label
+pattern instead — real tab *content*, keyboard-operable (native radio
+group semantics: Tab to reach it, Arrow keys to move between options,
+Space/click to select), but not full ARIA `tablist`/`tab`/`tabpanel`
+semantics or roving-tabindex JS. A formal `a11y-audit` pass against the
+deployed site (contrast numbers written down, reduced-motion handling,
+target sizes) stays explicit M3 scope per `docs/LIMITATIONS.md` — nothing
+here is deployed yet.
+
+## `/limits` still reads the simulator run, not either recording
+
+`sim-medspa-happy` and `rec-medspa-happy` carry the *same* `stubbed[]` list
+by schema (a recording's `stubbed` is required to include everything a
+simulator's is, per `packages/schema/src/run.ts`'s cross-check), so nothing
+`/limits` currently states is inaccurate. The simulator run is a strictly
+richer source for this specific page because it *also* has a non-empty
+`simulated[]` (a recording's is always `[]`, since n8n genuinely ran) —
+`/limits`'s whole point is naming every stubbed **and** simulated system,
+so switching its source to a recording would silently drop the "simulated"
+half of that panel. Left unchanged; the one now-false sentence it carried
+("No real n8n recording exists") is fixed to state the opposite.
+
+## The recording's `artifacts.errorWorkflow.assumed` stays `true`
+
+The `slack-401` recording (`content/runs/rec-medspa-slack-401/`) has a real
+n8n execution that really failed at the Slack node — but no second n8n
+workflow (an Error Trigger → Slack alert) was built and wired via n8n's
+Settings → Error Workflow for this capture. The deployment runbook already
+frames that error workflow as "prescribed... not part of workflow.json"
+(`capture/README.md`, `service-samples/.../deployment-runbook.md` section
+4) — it lives outside the one file this repo captures against. Recording
+`assumed: true` here (identical to the simulator's own `slack-revoked`
+scenario) is the honest choice: claiming `assumed: false` would assert a
+second real execution that was never captured. A genuinely captured error
+workflow is a reasonable future upgrade, not attempted this session to
+keep scope bounded to what the build brief asked for.
+
+## `/` 's hero number now reads the recording, not the simulator
+
+Not spec-mandated by name, but a direct consequence of the honesty
+architecture's own logic: Spec section 2 calls the recording "the only
+artefact that proves n8n *ran*," and `numberFlag()` already renders
+`"measured"` for a recording vs. `"modeled"` for a simulator run — the
+strictly stronger, truer claim, now that it exists. `/`'s hero switched
+from `sim-medspa-happy` to `rec-medspa-happy`; `/demo` puts the Recording
+tab first for the same reason. `/limits` did not switch — see above.
+
+## stubhouse answers more than `@lrd/engine`'s modeled Google Sheets shapes
+
+`capture/README.md`'s original (M0-era) plan said stubhouse should reuse
+`@lrd/engine`'s stub module "rather than re-inventing it." That still holds
+for every response the simulator also needs (GHL upsert/messages/search,
+Slack `chat.postMessage`, the Sheets `values:append` shape) — all of them
+call `answer()` from `@lrd/engine/stubs.ts` unchanged. A **real** n8n
+Google Sheets node makes several additional plumbing calls the simulator
+has no reason to model at all (resolving a sheet name to its numeric id,
+reserving a trailing row via `:batchUpdate`, reading current values to
+decide auto-map-vs-defined-columns before writing) — these are answered
+directly in `capture/stubhouse/server.mjs`, documented at the point they're
+handled. This is not the simulator and the recording disagreeing about
+what Sheets does; it's the difference between a model that renders one
+artifact directly and a real HTTP client library that has to ask the API
+questions first.
+
+## The simulator's timing table is not swapped for the recording's real numbers
+
+`packages/engine/src/timing/modeled-v1.json`'s own note says: "M1 replaces
+this table with one derived from the raw execution export, and the run
+files' labels change with it." That was the previous (M0) builder's
+forward-looking comment, written before this session's actual M1 build
+brief existed. This session's brief scoped M1 explicitly to the capture
+rig, the two recordings, and the Recording tab — it does not ask for a new
+timing table, a re-derivation of `simulator.timingTable.basis` from
+`"modeled"` to `"recording"`, or regenerating the five simulator runs
+against it. Doing that properly also deserves more than one real
+execution's numbers to derive a jitter distribution from — a single
+happy-path capture gives exact per-node durations for *that run*, not yet
+a defensible `nominal`/`jitterPct` pair for a simulator meant to represent
+the general case. Left as explicit future work, not attempted this
+session; `docs/LIMITATIONS.md` states plainly that the simulator's timings
+remain modeled assumptions sitting next to (not reconciled with) the two
+real measurements now in the repo.
+
+## Only two recordings exist; the other three simulator seams stay simulator-only
+
+Spec section 11 calls for exactly one recorded seam (a revoked Slack
+token) alongside the happy path — the other three fault seams
+(GoHighLevel 429, duplicate webhook, reply-check timeout) are named as
+**live** seam buttons at M2 ("four buttons on `/demo`... each injects a
+fault into the engine"), not as additional recordings. `rec-medspa-happy`
+and `rec-medspa-slack-401` are the complete M1 recording set by design, not
+a partial one.
 
 ## `pnpm e2e` doesn't use Playwright's own `webServer` option
 

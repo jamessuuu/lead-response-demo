@@ -47,19 +47,21 @@ const neverSent = neverSentStatement(run);
   <h2>What this page does not cover yet</h2>
   <ul class="honesty-list">
     <li>
-      <strong>Only one run.</strong> This lists what's stubbed/simulated for <code>sim-medspa-happy</code> specifically.
-      The four other committed runs (a revoked Slack token, a GoHighLevel rate-limit, a duplicate webhook, a
-      reply-check timeout) carry the same lists — every simulator run must, by schema — but aren't linked from a page
-      yet.
+      <strong>This page still lists the simulator run's stubs, not the recording's.</strong> The stubbed/simulated
+      sets are identical either way (a recording just has an empty <code>simulated[]</code>, since n8n genuinely ran)
+      — the four other committed simulator scenarios (a revoked Slack token, a GoHighLevel rate-limit, a duplicate
+      webhook, a reply-check timeout) carry the same lists by schema, but aren't linked from a page yet.
     </li>
     <li>
       <strong>No accessibility or performance audit has run.</strong> See <code>docs/LIMITATIONS.md</code> for what
       that means concretely — both are explicit milestone-M3 gates against a deployed URL, and nothing here is
-      deployed.
+      deployed. The <code>/demo</code> tab switcher is a zero-JS radio/label pattern, not full ARIA tabs.
     </li>
     <li>
-      <strong>No real n8n recording exists.</strong> See <code>capture/README.md</code>. This entire run is a
-      simulator run — the mode chip on <a href="/demo">/demo</a> says so above the fold, from this same data.
+      <strong>A real n8n recording exists now (milestone M1)</strong> — <a href="/demo">/demo</a>'s Recording tab is
+      the default view, captured with <code>capture/stubhouse</code> standing in for GoHighLevel, Slack and Google
+      Sheets. See <code>capture/README.md</code> for exactly how, and <code>docs/M1-REPORT.md</code> for what was
+      measured.
     </li>
   </ul>
 </Base>

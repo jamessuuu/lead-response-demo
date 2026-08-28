@@ -1,177 +1,64 @@
 ---
 import Base from '../layouts/Base.astro';
+import RunPanel from '../components/RunPanel.astro';
 import { loadRun } from '../lib/runs.ts';
-import { deriveTimeline, formatDuration, modeChip, offsetLabel, wallClock, whatThisIsNot } from '@lrd/schema';
+import { wallClock, offsetLabel } from '@lrd/schema';
 
-const run = loadRun('sim-medspa-happy');
-const chip = modeChip(run);
-const notThis = whatThisIsNot(run);
-const timeline = deriveTimeline(run.nodes);
-const offset = offsetLabel(run.startedAt);
+// Recording first: Spec section 2 calls the recorded replay "the only
+// artefact that proves n8n *ran*" and lists it before the simulator. M1
+// makes that real — the recording tab is the default, not an afterthought
+// bolted onto the M0 simulator page.
+const recordingRun = loadRun('rec-medspa-happy');
+const simulatorRun = loadRun('sim-medspa-happy');
+const seamRun = loadRun('rec-medspa-slack-401');
 
-const STATUS_LABEL: Record<string, string> = {
-  success: 'ran',
-  error: 'failed',
-  disabled: 'disabled',
-  'not-run': 'not run',
-};
-
-// Pre-computed as plain data (not cast inline in the template) so the
-// template stays a dumb render of strings — astro check parses frontmatter
-// JSX-adjacent code in a TSX-like mode where a generic type argument list
-// (e.g. `as Extract<typeof value, {...}>`) inside a .map() callback is
-// ambiguous with a JSX tag open; this sidesteps that entirely.
-interface ArtifactCard {
-  label: string;
-  meta: string[];
-  body: string | null;
-}
-const artifactCards: ArtifactCard[] = [
-  run.artifacts.sms
-    ? { label: 'SMS (first touch)', meta: [`to ${run.artifacts.sms.to}`], body: run.artifacts.sms.body }
-    : { label: 'SMS (first touch)', meta: [], body: null },
-  run.artifacts.email
-    ? {
-        label: 'Email (first touch)',
-        meta: [run.artifacts.email.subject, `from ${run.artifacts.email.from}`],
-        body: run.artifacts.email.preview,
-      }
-    : { label: 'Email (first touch)', meta: [], body: null },
-  run.artifacts.slack
-    ? { label: 'Slack — owner notified', meta: [run.artifacts.slack.channel], body: run.artifacts.slack.text }
-    : { label: 'Slack — owner notified', meta: [], body: null },
-  run.artifacts.slackEscalation
-    ? {
-        label: 'Slack — no-reply escalation',
-        meta: [run.artifacts.slackEscalation.channel],
-        body: run.artifacts.slackEscalation.text,
-      }
-    : { label: 'Slack — no-reply escalation', meta: [], body: null },
-];
+const offset = offsetLabel(recordingRun.startedAt);
 ---
 
 <Base
   title="Demo run — Lead Response Engine"
-  description="Every node of one lead's run, with real timestamps, the exact SMS/email/Slack it composed, and a plain statement of what was real, stubbed, or simulated."
+  description="A real n8n execution, node by node, with the exact timestamps, the exact SMS/email/Slack it composed, and a plain statement of what was real, stubbed, or simulated."
 >
   <h1>One lead's run, node by node</h1>
   <p>
-    Alex Rivera submitted a website enquiry about lip filler at {wallClock(run.startedAt)} ({offset}). Below is the
-    ordered execution log for that run — the same data this page reads is downloadable as
-    <a href={`/runs/${run.id}/run.json`}>run.json</a>.
+    Alex Rivera submitted a website enquiry about lip filler at {wallClock(recordingRun.startedAt)} ({offset}). Below
+    is the ordered execution log — real n8n on the <strong>Recording</strong> tab, the same topology run by a
+    deterministic engine on the <strong>Simulator</strong> tab. Both read straight from the committed run file;
+    nothing here is typed into the page.
   </p>
 
-  <div class="mode-chip" role="note">
-    <span class="mode-chip__title">{chip.title}</span>
-    {chip.text}
+  <div class="tabs">
+    <input type="radio" name="demo-mode" id="tab-recording" class="tabs__input" checked />
+    <label for="tab-recording" class="tabs__label">Recording</label>
+    <input type="radio" name="demo-mode" id="tab-simulator" class="tabs__input" />
+    <label for="tab-simulator" class="tabs__label">Simulator</label>
+
+    <div class="tabs__panel" id="panel-recording">
+      <RunPanel run={recordingRun} />
+    </div>
+    <div class="tabs__panel" id="panel-simulator">
+      <RunPanel run={simulatorRun} />
+    </div>
   </div>
 
-  <div class="panel">
-    <p class="panel__heading">What this run is not</p>
-    {
-      notThis.map((line) => (
-        <div class="system-line">
-          <span class={`tag tag--${line.status}`}>{line.status}</span>
-          <span class="system-line__name">{line.name}</span>
-          <span class="system-line__text">{line.text}</span>
-        </div>
-      ))
-    }
+  <div class="panel" style="margin-top: 2rem;">
+    <p class="panel__heading">The recorded seam</p>
+    <div class="system-line" style="border-bottom: none;">
+      <span class="system-line__text">
+        A second real capture (<code>{seamRun.id}</code>) has <code>stubhouse</code> answer Slack's
+        <code>chat.postMessage</code> with a real 401, simulating a revoked bot token — n8n's own error path fires
+        after the first-touch SMS and email already went out. <a href={`/runs/${seamRun.id}/run.json`}>run.json</a> ·
+        <a href={`/runs/${seamRun.id}/execution.json`}>execution.json</a>. Its own execution log doesn't have a page
+        yet — the live "break it" buttons that make seams interactive arrive at milestone M2.
+      </span>
+    </div>
   </div>
-  <p><a href="/limits">The full limits page →</a></p>
-
-  <div class="ledger-scroll">
-    <table class="ledger">
-      <caption>
-        Execution log — {run.nodes.length} nodes, {chip.title.toLowerCase()}
-      </caption>
-      <thead>
-        <tr>
-          <th scope="col">#</th>
-          <th scope="col">node</th>
-          <th scope="col">status</th>
-          <th scope="col">started at</th>
-          <th scope="col">t+</th>
-          <th scope="col">duration</th>
-          <th scope="col">what happened</th>
-        </tr>
-      </thead>
-      <tbody>
-        {
-          timeline.map((row, i) => (
-            <tr>
-              <td class="num">{i + 1}</td>
-              <td>{row.node.name}</td>
-              <td>
-                <span class={`status status--${row.node.status}`}>{STATUS_LABEL[row.node.status]}</span>
-              </td>
-              <td class="num">{row.node.startedAt ? wallClock(row.node.startedAt) : '—'}</td>
-              <td class="num">{row.offsetMs !== null ? `+${formatDuration(row.offsetMs)}` : '—'}</td>
-              <td class="num">{row.durationMs !== null ? formatDuration(row.durationMs) : '—'}</td>
-              <td class="summary-cell">
-                {row.node.summary}
-                {row.node.id === 'node-wait' && row.durationMs !== null && (
-                  <span class="wait-note">
-                    {formatDuration(row.durationMs)} of real wait, shown at full length above — not compressed here.
-                    An animated, sped-up player arrives at milestone M1.
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))
-        }
-      </tbody>
-    </table>
-  </div>
-
-  <h2>What it composed</h2>
-  <div class="artifacts">
-    {
-      artifactCards.map((card) =>
-        card.body === null ? (
-          <div class="artifact artifact--empty">
-            <span class="artifact__label">{card.label}</span>
-            not composed on this run
-          </div>
-        ) : (
-          <div class="artifact">
-            <span class="artifact__label">{card.label}</span>
-            {card.meta.map((line) => (
-              <span class="artifact__meta">{line}</span>
-            ))}
-            <p class="artifact__body">{card.body}</p>
-          </div>
-        ),
-      )
-    }
-  </div>
-
-  {
-    run.artifacts.sheetRow && (
-      <>
-        <h2>The audit-log row it appended</h2>
-        <div class="artifact" style="margin-bottom: 2rem;">
-          <span class="artifact__label">Google Sheets — Leads tab</span>
-          <table class="sheet-row">
-            <tbody>
-              {run.artifacts.sheetRow.map((cell) => (
-                <tr>
-                  <th scope="row">{cell.column}</th>
-                  <td>{cell.value || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </>
-    )
-  }
 
   <p>
-    This is one of five committed runs (happy path, a revoked Slack token, a GoHighLevel rate-limit, a duplicate
-    webhook delivery, and a reply-check timeout) that <code>packages/engine</code> executes identically and
-    deterministically — see <code>packages/engine/test/golden/</code> for the other four. Only the happy path
-    renders on this page today — switching between scenarios and the live "break it" controls arrive at milestones
-    M1–M2.
+    This is one of five simulator scenarios <code>packages/engine</code> executes identically and deterministically
+    (happy path, a revoked Slack token, a GoHighLevel rate-limit, a duplicate webhook delivery, a reply-check
+    timeout — see <code>packages/engine/test/golden/</code>), plus the two real n8n recordings above. Only the happy
+    simulator and the two recordings render on this page today; switching live between every scenario and the
+    interactive "break it" controls arrive at milestone M2.
   </p>
 </Base>

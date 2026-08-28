@@ -1,0 +1,162 @@
+---
+import { deriveTimeline, formatDuration, modeChip, wallClock, whatThisIsNot, type RunFile } from '@lrd/schema';
+
+interface Props {
+  run: RunFile;
+}
+const { run } = Astro.props;
+
+const chip = modeChip(run);
+const notThis = whatThisIsNot(run);
+const timeline = deriveTimeline(run.nodes);
+
+const STATUS_LABEL: Record<string, string> = {
+  success: 'ran',
+  error: 'failed',
+  disabled: 'disabled',
+  'not-run': 'not run',
+};
+
+// Pre-computed as plain data, not cast inline in the template — see
+// site/src/pages/demo.astro's own note on why (.astro frontmatter's
+// TSX-adjacent parsing makes `as Extract<typeof x, {...}>` inside a
+// .map() callback ambiguous with a JSX tag open).
+interface ArtifactCard {
+  label: string;
+  meta: string[];
+  body: string | null;
+}
+const artifactCards: ArtifactCard[] = [
+  run.artifacts.sms
+    ? { label: 'SMS (first touch)', meta: [`to ${run.artifacts.sms.to}`], body: run.artifacts.sms.body }
+    : { label: 'SMS (first touch)', meta: [], body: null },
+  run.artifacts.email
+    ? {
+        label: 'Email (first touch)',
+        meta: [run.artifacts.email.subject, `from ${run.artifacts.email.from}`],
+        body: run.artifacts.email.preview,
+      }
+    : { label: 'Email (first touch)', meta: [], body: null },
+  run.artifacts.slack
+    ? { label: 'Slack — owner notified', meta: [run.artifacts.slack.channel], body: run.artifacts.slack.text }
+    : { label: 'Slack — owner notified', meta: [], body: null },
+  run.artifacts.slackEscalation
+    ? {
+        label: 'Slack — no-reply escalation',
+        meta: [run.artifacts.slackEscalation.channel],
+        body: run.artifacts.slackEscalation.text,
+      }
+    : { label: 'Slack — no-reply escalation', meta: [], body: null },
+];
+---
+
+<div class="mode-chip" role="note">
+  <span class="mode-chip__title">{chip.title}</span>
+  {chip.text}
+</div>
+
+<div class="panel">
+  <p class="panel__heading">What this run is not</p>
+  {
+    notThis.map((line) => (
+      <div class="system-line">
+        <span class={`tag tag--${line.status}`}>{line.status}</span>
+        <span class="system-line__name">{line.name}</span>
+        <span class="system-line__text">{line.text}</span>
+      </div>
+    ))
+  }
+</div>
+<p><a href="/limits">The full limits page →</a></p>
+
+<div class="ledger-scroll">
+  <table class="ledger">
+    <caption>
+      Execution log — {run.nodes.length} nodes, {chip.title.toLowerCase()}
+      {run.mode === 'recording' && run.n8n && ` — n8n ${run.n8n.version}, execution #${run.n8n.executionId}`}
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">node</th>
+        <th scope="col">status</th>
+        <th scope="col">started at</th>
+        <th scope="col">t+</th>
+        <th scope="col">duration</th>
+        <th scope="col">what happened</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        timeline.map((row, i) => (
+          <tr>
+            <td class="num">{i + 1}</td>
+            <td>{row.node.name}</td>
+            <td>
+              <span class={`status status--${row.node.status}`}>{STATUS_LABEL[row.node.status]}</span>
+            </td>
+            <td class="num">{row.node.startedAt ? wallClock(row.node.startedAt) : '—'}</td>
+            <td class="num">{row.offsetMs !== null ? `+${formatDuration(row.offsetMs)}` : '—'}</td>
+            <td class="num">{row.durationMs !== null ? formatDuration(row.durationMs) : '—'}</td>
+            <td class="summary-cell">
+              {row.node.summary}
+              {row.node.id === 'node-wait' && row.durationMs !== null && (
+                <span class="wait-note">
+                  {formatDuration(row.durationMs)} of real wait — timestamps above are unmodified. {run.mode === 'recording' ? "n8n genuinely suspended and resumed this execution; nothing here is sped up." : 'An animated, sped-up player arrives at milestone M2.'}
+                </span>
+              )}
+            </td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>
+
+<h2>What it composed</h2>
+<div class="artifacts">
+  {
+    artifactCards.map((card) =>
+      card.body === null ? (
+        <div class="artifact artifact--empty">
+          <span class="artifact__label">{card.label}</span>
+          not composed on this run
+        </div>
+      ) : (
+        <div class="artifact">
+          <span class="artifact__label">{card.label}</span>
+          {card.meta.map((line) => (
+            <span class="artifact__meta">{line}</span>
+          ))}
+          <p class="artifact__body">{card.body}</p>
+        </div>
+      ),
+    )
+  }
+</div>
+
+{
+  run.artifacts.sheetRow && (
+    <>
+      <h2>The audit-log row it appended</h2>
+      <div class="artifact" style="margin-bottom: 2rem;">
+        <span class="artifact__label">Google Sheets — Leads tab</span>
+        <table class="sheet-row">
+          <tbody>
+            {run.artifacts.sheetRow.map((cell) => (
+              <tr>
+                <th scope="row">{cell.column}</th>
+                <td>{cell.value || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+<p class="run-downloads mono">
+  <a href={`/runs/${run.id}/run.json`}>run.json</a>
+  {run.mode === 'recording' && <> · <a href={`/runs/${run.id}/execution.json`}>execution.json</a> (raw, untouched)</>}
+</p>

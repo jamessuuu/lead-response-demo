@@ -15,14 +15,18 @@ stubbed, what's simulated, whether anything was ever sent — is composed
 from a committed `run.json` file (`packages/schema/src/labels.ts`), never
 typed into a template. Softening a claim requires lying in a file that CI
 validates (`pnpm check:runs`, `pnpm check:drift`) and that a reviewer can
-open directly. **No real n8n recording exists yet.** Every run currently in
-this repo has `mode: "simulator"`: a deterministic TypeScript executor
-(`packages/engine`) walks the same 14-node topology as
-`content/workflow.json`, with modeled per-node timings, and says so on
-every page that renders it. See `capture/README.md` for exactly what that
-means and what's missing to change it.
+open directly. **A real n8n recording exists (milestone M1).** A local n8n
+instance genuinely executed `content/workflow.json`, with GoHighLevel,
+Slack and Google Sheets answered by a local `stubhouse` — never a live
+account — see `capture/README.md` for exactly how, and
+`content/runs/rec-medspa-happy/` / `rec-medspa-slack-401/` for the two
+committed recordings (`mode: "recording"`, `execution.json` + `attest.json`
+alongside each `run.json`). Five simulator runs also still exist
+(`mode: "simulator"`): a deterministic TypeScript executor
+(`packages/engine`) walks the same 14-node topology with modeled per-node
+timings — `/demo`'s Simulator tab shows one, next to the Recording tab.
 
-## Status: milestone M0 (walking skeleton)
+## Status: milestone M1 (the recording)
 
 - [x] `packages/schema` — Zod `RunFile` v1 (+ the `recording` mode
       refinement requiring `execution.json`/`attest.json` siblings),
@@ -39,14 +43,25 @@ means and what's missing to change it.
       not faked.
 - [x] CI: typecheck, unit+golden tests, drift check, binding allow-list,
       secret scan, build, Playwright (320px + JS-disabled).
-- [ ] M1 (the recording), M2 (the simulator's live surface: Worker + D1 +
-      quota + Turnstile + SSE + break-it controls), M3 (sales pages,
-      identity, perf/a11y gates), M4 (reach + launch) — not started.
+- [x] `capture/stubhouse` — real local HTTP stand-ins for GoHighLevel,
+      Slack, Google Sheets, reusing `@lrd/engine`'s own response-shape
+      generator; a fault switch for the recorded Slack-401 seam.
+- [x] `capture/capture.mjs` — imports `content/workflow.json` into a real
+      local n8n, fires the production webhook, waits out the genuine
+      15-minute Wait node, and emits the three recording files.
+- [x] Two real recordings committed: `rec-medspa-happy`,
+      `rec-medspa-slack-401`.
+- [x] `/demo` gains a zero-JS Recording/Simulator tab switcher (Recording
+      first); `/`'s hero number now reads the real, measured recording.
+- [ ] M2 (the simulator's live surface: Worker + D1 + quota + Turnstile +
+      SSE + break-it controls), M3 (sales pages, identity, perf/a11y
+      gates), M4 (reach + launch) — not started.
 
 See `docs/PROGRESS.md` for the milestone log, `docs/DEVIATIONS.md` for
 where this build diverged from the spec and why, `docs/LIMITATIONS.md` for
-what's stubbed/modeled/unverified, and `docs/M0-REPORT.md` for the actual
-verification output this milestone shipped with.
+what's stubbed/modeled/unverified, and `docs/M0-REPORT.md` /
+`docs/M1-REPORT.md` for the actual verification output each milestone
+shipped with.
 
 ## Quickstart
 
@@ -81,11 +96,11 @@ packages/schema/   Zod schemas + types every other package/site consumes
 packages/engine/   pure TS topology executor — no I/O, no DOM, deterministic
 site/              Astro static site (imports engine + schema, reads content/runs/)
 worker/            Hono Worker — HTTP surface, no topology logic (M0: /api/health only)
-capture/           the M1 recording rig — README + stubhouse contract, nothing runnable yet
+capture/           the M1 recording rig — stubhouse + capture.mjs, runs for real
 content/           workflow.json (the base n8n export) + the committed runs
 scripts/           generate-runs, drift-check, check-bindings, check-secrets, e2e
 tests/e2e/          Playwright suite
-docs/              PROGRESS, DEVIATIONS, LIMITATIONS, M0-REPORT, screenshots
+docs/              PROGRESS, DEVIATIONS, LIMITATIONS, M0-REPORT, M1-REPORT, screenshots
 ```
 
 ## Deploying (documented, not run this session)

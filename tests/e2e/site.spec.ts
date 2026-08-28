@@ -4,7 +4,13 @@ import { expect, test } from '@playwright/test';
 import { RunFile, SYSTEMS, formatSeconds } from '@lrd/schema';
 
 const ROOT = join(import.meta.dirname, '..', '..');
-const HAPPY_RUN = RunFile.parse(JSON.parse(readFileSync(join(ROOT, 'content/runs/sim-medspa-happy/run.json'), 'utf8')));
+function loadRun(id: string) {
+  return RunFile.parse(JSON.parse(readFileSync(join(ROOT, `content/runs/${id}/run.json`), 'utf8')));
+}
+
+const RECORDING_RUN = loadRun('rec-medspa-happy'); // /demo's default tab, and / 's hero source (M1)
+const SIM_RUN = loadRun('sim-medspa-happy'); // /demo's Simulator tab, and /limits' source
+const SEAM_RUN = loadRun('rec-medspa-slack-401');
 
 test.describe('320px — no horizontal scroll (Spec section 13, criterion 10)', () => {
   test.use({ viewport: { width: 320, height: 800 } });
@@ -19,9 +25,9 @@ test.describe('320px — no horizontal scroll (Spec section 13, criterion 10)', 
     });
   }
 
-  test('/demo: the node ledger scrolls inside its own container, not the page', async ({ page }) => {
+  test('/demo: the visible ledger scrolls inside its own container, not the page', async ({ page }) => {
     await page.goto('/demo');
-    const box = page.locator('.ledger-scroll');
+    const box = page.locator('#panel-recording .ledger-scroll');
     const { scrollW, clientW } = await box.evaluate((el) => ({ scrollW: el.scrollWidth, clientW: el.clientWidth }));
     // The table genuinely is wider than a 320px viewport (7 columns of real
     // data) — this asserts that width lives inside .ledger-scroll, not that
@@ -40,61 +46,95 @@ test.describe('zero JS on / (Spec section 13)', () => {
     const html = await response!.text();
     expect(html.toLowerCase()).not.toContain('<script');
   });
+
+  test('/demo ships no <script> tag either — the tab switcher is CSS-only', async ({ page }) => {
+    const response = await page.goto('/demo');
+    const html = await response!.text();
+    expect(html.toLowerCase()).not.toContain('<script');
+  });
 });
 
 test.describe('works with JavaScript disabled (Spec section 8/16, criterion 3)', () => {
   test.use({ javaScriptEnabled: false });
 
-  test('/ delivers the headline number, its provenance flag, and the try link', async ({ page }) => {
+  test('/ delivers the headline number (from the real recording), its provenance flag, and the try link', async ({ page }) => {
     await page.goto('/');
-    const dispatchMs = HAPPY_RUN.metrics.firstTouchDispatchMs;
+    const dispatchMs = RECORDING_RUN.metrics.firstTouchDispatchMs;
     expect(dispatchMs).not.toBeNull();
     const headline = formatSeconds(dispatchMs as number);
 
     // Acceptance criterion 8: the number on the page equals the committed run file.
     await expect(page.locator('.hero__number')).toContainText(headline);
     await expect(page.locator('.hero__number')).toContainText('first touch');
-    await expect(page.locator('.hero__flag')).toContainText('simulator run');
+    await expect(page.locator('.hero__flag')).toContainText('measured');
 
     const cta = page.getByRole('link', { name: /walk through the run/i });
     await expect(cta).toHaveAttribute('href', '/demo');
   });
 
-  test('/demo delivers the mode chip, the full 14-node ledger, and every artifact', async ({ page }) => {
+  test('/demo: the Recording tab is the default view — mode chip, full ledger, every artifact', async ({ page }) => {
     await page.goto('/demo');
 
-    const chip = page.locator('.mode-chip');
+    const recording = page.locator('#panel-recording');
+    await expect(recording).toBeVisible();
+    await expect(page.locator('#panel-simulator')).not.toBeVisible();
+
+    const chip = recording.locator('.mode-chip');
+    await expect(chip).toContainText('Recording');
+    await expect(chip).toContainText(`n8n ${RECORDING_RUN.n8n?.version}`);
+    await expect(chip).toContainText('Nothing was sent to anyone');
+
+    const rows = recording.locator('table.ledger tbody tr');
+    await expect(rows).toHaveCount(RECORDING_RUN.nodes.length);
+    for (const node of RECORDING_RUN.nodes) {
+      await expect(recording.locator('table.ledger')).toContainText(node.name);
+    }
+
+    await expect(recording.getByText(/composed the first-touch sms/i)).toBeVisible();
+    const artifacts = recording.locator('.artifacts .artifact');
+    await expect(artifacts).toHaveCount(4);
+    await expect(recording.locator('.artifacts .artifact--empty')).toHaveCount(0);
+    await expect(recording.locator('.sheet-row')).toBeVisible();
+  });
+
+  test('/demo: clicking the Simulator label switches tabs with no JavaScript at all', async ({ page }) => {
+    await page.goto('/demo');
+    await page.locator('label[for="tab-simulator"]').click();
+
+    const simulator = page.locator('#panel-simulator');
+    await expect(simulator).toBeVisible();
+    await expect(page.locator('#panel-recording')).not.toBeVisible();
+
+    const chip = simulator.locator('.mode-chip');
     await expect(chip).toContainText('Simulator');
     await expect(chip).toContainText('this is not n8n');
 
-    const panel = page.locator('.panel');
-    await expect(panel).toContainText('What this run is not');
-
-    const rows = page.locator('table.ledger tbody tr');
-    await expect(rows).toHaveCount(HAPPY_RUN.nodes.length);
-
-    // Every node name from the run file actually renders somewhere in the table.
-    for (const node of HAPPY_RUN.nodes) {
-      await expect(page.locator('table.ledger')).toContainText(node.name);
-    }
-
-    await expect(page.getByText(/composed the first-touch sms/i)).toBeVisible();
-    const artifacts = page.locator('.artifacts .artifact');
-    await expect(artifacts).toHaveCount(4);
-    await expect(page.locator('.artifacts .artifact--empty')).toHaveCount(0); // every artifact composed on the happy path
-
-    await expect(page.locator('.sheet-row')).toBeVisible();
+    const rows = simulator.locator('table.ledger tbody tr');
+    await expect(rows).toHaveCount(SIM_RUN.nodes.length);
   });
 
-  test('the run.json download link resolves and matches the committed file', async ({ page, request }) => {
+  test('the recording tab links both run.json and execution.json, and both resolve to the committed files', async ({ page, request }) => {
     await page.goto('/demo');
-    const href = await page.locator(`a[href$="/runs/${HAPPY_RUN.id}/run.json"]`).getAttribute('href');
-    expect(href).toBeTruthy();
-    const res = await request.get(href as string);
-    expect(res.status()).toBe(200);
-    const body = await res.json();
-    expect(body.id).toBe(HAPPY_RUN.id);
-    expect(body.metrics.firstTouchDispatchMs).toBe(HAPPY_RUN.metrics.firstTouchDispatchMs);
+    const recording = page.locator('#panel-recording');
+
+    const runHref = await recording.locator(`a[href$="/runs/${RECORDING_RUN.id}/run.json"]`).getAttribute('href');
+    expect(runHref).toBeTruthy();
+    const runRes = await request.get(runHref as string);
+    expect(runRes.status()).toBe(200);
+    const runBody = await runRes.json();
+    expect(runBody.id).toBe(RECORDING_RUN.id);
+    expect(runBody.metrics.firstTouchDispatchMs).toBe(RECORDING_RUN.metrics.firstTouchDispatchMs);
+
+    const execHref = await recording.locator(`a[href$="/runs/${RECORDING_RUN.id}/execution.json"]`).getAttribute('href');
+    expect(execHref).toBeTruthy();
+    const execRes = await request.get(execHref as string);
+    expect(execRes.status()).toBe(200);
+    const execBody = await execRes.json();
+    expect(execBody).toBeTruthy(); // the raw n8n export — shape is n8n's, not ours; just prove it's really there
+
+    // The seam recording's downloads are linked directly (no ledger page for it yet — M2).
+    const seamRunHref = await page.locator(`a[href$="/runs/${SEAM_RUN.id}/run.json"]`).getAttribute('href');
+    expect(seamRunHref).toBeTruthy();
   });
 
   test('/limits names every stubbed system and states that no SMS or email was ever sent (Spec section 16, criterion 2)', async ({
@@ -102,10 +142,10 @@ test.describe('works with JavaScript disabled (Spec section 8/16, criterion 3)',
   }) => {
     await page.goto('/limits');
     const body = page.locator('main');
-    for (const id of HAPPY_RUN.stubbed) {
+    for (const id of SIM_RUN.stubbed) {
       await expect(body).toContainText(SYSTEMS[id].name);
     }
-    for (const id of HAPPY_RUN.simulated) {
+    for (const id of SIM_RUN.simulated) {
       await expect(body).toContainText(SYSTEMS[id].name);
     }
     await expect(body).toContainText(/no sms or email was ever sent/i);

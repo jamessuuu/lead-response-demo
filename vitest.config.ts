@@ -6,6 +6,7 @@ export default defineConfig({
       'packages/**/test/**/*.test.ts',
       'scripts/**/*.test.ts',
       'worker/test/**/*.test.ts',
+      'capture/**/test/**/*.test.mjs',
     ],
     environment: 'node',
     reporters: process.env.CI ? ['default', 'junit'] : ['default'],

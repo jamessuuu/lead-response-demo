@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'wip/**']
+  pull_request:
+
+# One job, one runner, steps split out individually rather than a single
+# `pnpm verify` call — a red step in the Actions UI should name exactly
+# which gate failed (BATCH-2-STANDARDS.md: "A CI workflow exists and is
+# GREEN ON GITHUB ACTIONS ITSELF" — local green is not CI green).
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4 # version read from package.json's "packageManager" field
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit + golden trace tests
+        run: pnpm test
+
+      - name: Committed runs match a fresh regeneration (check:runs)
+        run: pnpm check:runs
+
+      - name: Drift check — runs vs content/workflow.json (Spec section 8)
+        run: pnpm check:drift
+
+      - name: Binding allow-list — DB + TURNSTILE_SECRET only (Spec section 7)
+        run: pnpm check:bindings
+
+      - name: Secret scan
+        run: pnpm check:secrets
+
+      - name: Build the site
+        run: pnpm build
+
+      - name: Install Playwright's browser
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E — 320px overflow, zero-JS, JS-disabled rendering (Spec section 13/16)
+        run: pnpm e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            test-results/
+          retention-days: 14

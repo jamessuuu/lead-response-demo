@@ -92,9 +92,18 @@ async function killPortOwner(port) {
         p.on('error', () => resolve());
       });
     }
+  } else {
+    // GitHub Actions runs ubuntu-latest by default, where `fuser` ships in
+    // the base image. The detached-process-group kill in killTree() above
+    // should already handle Linux (no pnpm.cmd-wrapper indirection there),
+    // but this is untested against real CI from this offline session, so
+    // it stays as a real backstop rather than an assumption.
+    await new Promise((resolve) => {
+      const p = spawn('fuser', ['-k', `${port}/tcp`], { stdio: 'ignore', shell: true });
+      p.on('exit', () => resolve());
+      p.on('error', () => resolve());
+    });
   }
-  // Non-Windows CI (none currently configured) can add the lsof/fuser
-  // equivalent here if this script ever needs to run there.
 }
 
 async function main() {

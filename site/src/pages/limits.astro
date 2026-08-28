@@ -1,0 +1,65 @@
+---
+import Base from '../layouts/Base.astro';
+import { loadRun } from '../lib/runs.ts';
+import { neverSentStatement, whatThisIsNot } from '@lrd/schema';
+
+const run = loadRun('sim-medspa-happy');
+const notThis = whatThisIsNot(run);
+const neverSent = neverSentStatement(run);
+---
+
+<Base
+  title="Limits — Lead Response Engine demo"
+  description="Every stubbed and simulated system, generated directly from the run file — not typed into this page."
+>
+  <h1>Limits</h1>
+  <p>
+    This page is generated from <code>run.json</code>'s <code>stubbed[]</code> and <code>simulated[]</code> arrays —
+    the same data <a href="/demo">/demo</a>'s "what this run is not" panel reads. Nothing below is typed into a
+    template; softening a claim here would mean lying in a file <a href="/runs/sim-medspa-happy/run.json"
+      >CI validates</a
+    >. For the fuller written accounting (what's modeled vs. measured, what hasn't been audited yet, sourcing on the
+    42-hour claim), see <code>docs/LIMITATIONS.md</code> in the repo.
+  </p>
+
+  {
+    neverSent && (
+      <div class="mode-chip" role="note">
+        <span class="mode-chip__title">Never sent</span>
+        {neverSent}
+      </div>
+    )
+  }
+
+  <div class="panel">
+    <p class="panel__heading">Every stubbed or simulated system in this run</p>
+    {
+      notThis.map((line) => (
+        <div class="system-line">
+          <span class={`tag tag--${line.status}`}>{line.status}</span>
+          <span class="system-line__name">{line.name}</span>
+          <span class="system-line__text">{line.text}</span>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2>What this page does not cover yet</h2>
+  <ul class="honesty-list">
+    <li>
+      <strong>Only one run.</strong> This lists what's stubbed/simulated for <code>sim-medspa-happy</code> specifically.
+      The four other committed runs (a revoked Slack token, a GoHighLevel rate-limit, a duplicate webhook, a
+      reply-check timeout) carry the same lists — every simulator run must, by schema — but aren't linked from a page
+      yet.
+    </li>
+    <li>
+      <strong>No accessibility or performance audit has run.</strong> See <code>docs/LIMITATIONS.md</code> for what
+      that means concretely — both are explicit milestone-M3 gates against a deployed URL, and nothing here is
+      deployed.
+    </li>
+    <li>
+      <strong>No real n8n recording exists.</strong> See <code>capture/README.md</code>. This entire run is a
+      simulator run — the mode chip on <a href="/demo">/demo</a> says so above the fold, from this same data.
+    </li>
+  </ul>
+</Base>

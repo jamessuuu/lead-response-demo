@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
-import { RunFile, formatSeconds } from '@lrd/schema';
+import { RunFile, SYSTEMS, formatSeconds } from '@lrd/schema';
 
 const ROOT = join(import.meta.dirname, '..', '..');
 const HAPPY_RUN = RunFile.parse(JSON.parse(readFileSync(join(ROOT, 'content/runs/sim-medspa-happy/run.json'), 'utf8')));
@@ -9,7 +9,7 @@ const HAPPY_RUN = RunFile.parse(JSON.parse(readFileSync(join(ROOT, 'content/runs
 test.describe('320px — no horizontal scroll (Spec section 13, criterion 10)', () => {
   test.use({ viewport: { width: 320, height: 800 } });
 
-  for (const path of ['/', '/demo']) {
+  for (const path of ['/', '/demo', '/limits']) {
     test(`${path} has zero horizontal overflow at 320px`, async ({ page }) => {
       await page.goto(path);
       const overflow = await page.evaluate(
@@ -95,5 +95,19 @@ test.describe('works with JavaScript disabled (Spec section 8/16, criterion 3)',
     const body = await res.json();
     expect(body.id).toBe(HAPPY_RUN.id);
     expect(body.metrics.firstTouchDispatchMs).toBe(HAPPY_RUN.metrics.firstTouchDispatchMs);
+  });
+
+  test('/limits names every stubbed system and states that no SMS or email was ever sent (Spec section 16, criterion 2)', async ({
+    page,
+  }) => {
+    await page.goto('/limits');
+    const body = page.locator('main');
+    for (const id of HAPPY_RUN.stubbed) {
+      await expect(body).toContainText(SYSTEMS[id].name);
+    }
+    for (const id of HAPPY_RUN.simulated) {
+      await expect(body).toContainText(SYSTEMS[id].name);
+    }
+    await expect(body).toContainText(/no sms or email was ever sent/i);
   });
 });

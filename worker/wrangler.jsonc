@@ -1,0 +1,12 @@
+{
+  // M0 scaffold. No bindings: DB (D1) and TURNSTILE_SECRET arrive at M2
+  // (Spec section 3, section 7). scripts/check-bindings.mjs enforces that
+  // nothing else is ever added here.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lead-response-demo-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-28",
+  "observability": {
+    "enabled": true
+  }
+}

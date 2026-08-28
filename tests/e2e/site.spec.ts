@@ -72,6 +72,28 @@ test.describe('works with JavaScript disabled (Spec section 8/16, criterion 3)',
     await expect(cta).toHaveAttribute('href', '/demo');
   });
 
+  test('/ states the dispatch number\'s local-stub condition on the same surface as the number itself (dispatcher-added M1 honesty requirement)', async ({
+    page,
+  }) => {
+    // firstTouchDispatchMs is 114-115ms *because the integrations are local
+    // stubs* — nowhere may that render as a bare "0.1 s" beside the 42-hour
+    // HBR benchmark without saying so on the same surface. See
+    // packages/schema/src/labels.ts's numberFlag() and
+    // packages/schema/test/labels.test.ts for the unit-level pin; this is
+    // the rendered-HTML proof.
+    await page.goto('/');
+    const flag = page.locator('.hero__flag');
+    await expect(flag).toContainText(/stub/i);
+    await expect(flag).toContainText(/gohighlevel/i);
+
+    // The number and its condition must sit together, not in different
+    // sections of the page — assert they share the hero, not just that
+    // both strings exist somewhere on the page.
+    const hero = page.locator('.hero');
+    await expect(hero.locator('.hero__number')).toBeVisible();
+    await expect(hero.locator('.hero__flag')).toContainText(/stub/i);
+  });
+
   test('/demo: the Recording tab is the default view — mode chip, full ledger, every artifact', async ({ page }) => {
     await page.goto('/demo');
 

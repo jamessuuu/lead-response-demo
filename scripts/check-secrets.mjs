@@ -14,7 +14,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const EXCLUDED_DIRS = new Set([
@@ -37,8 +37,14 @@ const EXCLUDED_DIRS = new Set([
 const EXCLUDED_FILES = new Set(['scripts/check-secrets.mjs', 'pnpm-lock.yaml']);
 const BINARY_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.ico', '.woff', '.woff2', '.gif', '.pdf']);
 
-/** Each pattern names the shape it catches, for a readable failure message. */
-const PATTERNS = [
+/**
+ * Each pattern names the shape it catches, for a readable failure message.
+ * Exported (along with `walk` and `scanText` below) so
+ * scripts/check-secrets.test.mjs can assert this exact scan finds nothing
+ * under content/runs/** specifically, without re-implementing or drifting
+ * from the vocabulary this CLI actually runs in CI.
+ */
+export const PATTERNS = [
   ['AWS access key', /\bAKIA[0-9A-Z]{16}\b/g],
   ['generic Bearer token', /\bBearer\s+[A-Za-z0-9\-_.=]{20,}\b/g],
   ['Slack token', /\bxox[baprs]-[0-9A-Za-z-]{10,}\b/g],
@@ -50,17 +56,43 @@ const PATTERNS = [
   ['un-redacted Authorization header value', /"authorization"\s*:\s*"(?!REDACTED|<)[^"]{8,}"/gi],
 ];
 
-/** @param {string} dir @returns {string[]} */
-function walk(dir) {
+/**
+ * Recursively lists every file under dir, skipping EXCLUDED_DIRS (or a
+ * caller-supplied set — scripts/check-secrets.test.mjs walks
+ * content/runs/ directly, where none of these exclusions are reachable
+ * anyway, but the parameter keeps this genuinely reusable rather than
+ * ROOT-shaped).
+ * @param {string} dir @param {Set<string>} excludedDirs @returns {string[]}
+ */
+export function walk(dir, excludedDirs = EXCLUDED_DIRS) {
   const out = [];
   for (const entry of readdirSync(dir)) {
-    if (EXCLUDED_DIRS.has(entry)) continue;
+    if (excludedDirs.has(entry)) continue;
     const full = join(dir, entry);
     const st = statSync(full);
-    if (st.isDirectory()) out.push(...walk(full));
+    if (st.isDirectory()) out.push(...walk(full, excludedDirs));
     else out.push(full);
   }
   return out;
+}
+
+/**
+ * Scans one file's already-read text against every PATTERN. `rel` is used
+ * only inside the returned hit messages (a display path, not a filesystem
+ * lookup), so callers are free to pass whatever relative form makes sense
+ * for their own root.
+ * @param {string} rel @param {string} text @returns {string[]}
+ */
+export function scanText(rel, text) {
+  const hits = [];
+  for (const [label, pattern] of PATTERNS) {
+    pattern.lastIndex = 0;
+    for (const m of text.matchAll(pattern)) {
+      const line = text.slice(0, m.index).split('\n').length;
+      hits.push(`${rel}:${line}: looks like a ${label} — "${m[0].slice(0, 60)}${m[0].length > 60 ? '…' : ''}"`);
+    }
+  }
+  return hits;
 }
 
 function main() {
@@ -75,13 +107,7 @@ function main() {
     } catch {
       continue;
     }
-    for (const [label, pattern] of PATTERNS) {
-      pattern.lastIndex = 0;
-      for (const m of text.matchAll(pattern)) {
-        const line = text.slice(0, m.index).split('\n').length;
-        hits.push(`${rel}:${line}: looks like a ${label} — "${m[0].slice(0, 60)}${m[0].length > 60 ? '…' : ''}"`);
-      }
-    }
+    hits.push(...scanText(rel, text));
   }
 
   if (hits.length > 0) {
@@ -97,4 +123,13 @@ function main() {
   console.log('Secret scan passed: no secret-shaped strings found in the tracked tree.');
 }
 
-main();
+// Only run the CLI (including its process.exit(1) on a hit) when this file
+// is executed directly (`node scripts/check-secrets.mjs`) — not when
+// imported for PATTERNS/walk/scanText, as scripts/check-secrets.test.mjs
+// now does. Without this guard, importing this module for its exports
+// would also re-run the full-tree scan as an import side effect and could
+// exit the whole test process mid-import on a genuine hit, instead of
+// failing that one test normally.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  main();
+}

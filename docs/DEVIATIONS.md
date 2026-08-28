@@ -285,3 +285,42 @@ wrapper it spawned, leaving the real `astro preview` process orphaned and
 still bound to port 4321 — which made the *next* run fail immediately.
 `pnpm e2e` (not `npx playwright test` directly) is the supported entry
 point; see the comment at the top of `playwright.config.ts`.
+
+## The Simulator mode-chip label doesn't say "runs in a Cloudflare Worker" yet
+
+Spec section 2's literal Simulator wording is: "Simulator — this is not
+n8n. The same topology runs in a Cloudflare Worker, with per-node timings
+taken from the recording. Nothing is sent; no CRM is written."
+`packages/schema/src/labels.ts`'s `modeChip()` renders "...runs in a
+deterministic engine..." instead, because at M0/M1 the literal claim would
+be false: `packages/engine` executes at build time inside Node (via
+`scripts/generate-runs.ts`, and `.astro` frontmatter at `astro build`
+time), never inside a deployed Cloudflare Worker — no Worker exists in
+this repo beyond `worker/`'s M0 `GET /api/health` scaffold (see this
+file's own entry above), and nothing gets deployed this session regardless
+(task scope: local commits only). Saying "Cloudflare Worker" now would be
+exactly the kind of claim the honesty architecture exists to forbid — true
+of the spec's *eventual* M2+ shape, false of what actually executes today.
+`modeChip()` should switch to the spec's literal wording once
+`packages/engine` genuinely runs inside `worker/` (M2's SSE-streamed
+simulator surface); tracked here rather than matched early and quietly.
+
+## The dispatch number's "measured"/"modeled" flag now states its own condition, not just its basis
+
+Dispatcher-added, session-scoped requirement (recorded here because it
+changes rendered copy the spec itself only implies): `metrics.
+firstTouchDispatchMs` is 114-115ms *because the integrations it depends on
+are local stubs* — a real GoHighLevel SMS round trip was never in the
+loop. Before this fix, `numberFlag()` rendered a bare `"measured · recording
+of n8n <version>"` for a recording — true as far as it went, but silent on
+the one condition that actually matters to a reader deciding what the
+number proves. `numberFlag()` (`packages/schema/src/labels.ts`) now states
+the stub condition every time it renders for a recording, so the one place
+Spec section 9's headline number appears (`site/src/pages/index.astro`'s
+`.hero__flag`, directly beneath `.hero__number`) never shows the figure
+without it; `packages/schema/test/labels.test.ts` and `tests/e2e/site.spec.ts`
+pin the rendered text. Not yet applicable: an OG image (Spec section 14,
+M4 scope — none exists in this repo yet) and README (which does not
+currently state the specific figure at all, only "under a second" in
+`index.astro`'s `<meta name="description">`, which is not a bare number
+beside the HBR claim). Revisit both when they're built.

@@ -212,11 +212,43 @@ DOM), a dedicated "switch tabs with JS disabled" test (native
 label-for-radio activation needs no JavaScript), and both recording
 download links.
 
-_(Verification output — `pnpm verify`, both recordings' real numbers, the
-redaction proof — lands in `docs/M1-REPORT.md` once the second capture
-and the full gate run are done; this entry is written mid-session and
-will be reconciled against the final state before the branch is handed
-back.)_
+**Two more real defects, found only once both real recordings existed and
+`pnpm e2e` ran against real (not simulator) data for the first time.**
+First: `execution.json` was never actually redacted — `capture.mjs`
+redacted `run.json` via `redactDeep` but wrote `executionData` straight
+through, so the fictional lead's real phone number appeared unmasked
+7 times in `rec-medspa-happy/execution.json` and 3 times in
+`rec-medspa-slack-401/execution.json`, contradicting `attest.json`'s own
+`phoneMasked: true` claim. Fixed by applying `redactDeep` to a copy of
+the execution data before writing it; every "raw, untouched" claim in the
+site/README/route doc comments was corrected to "raw export,
+phone-redacted." Second: `/demo` failed `pnpm e2e`'s own 320px
+zero-horizontal-scroll gate by 318-321px, root-caused with live browser
+measurement (not guessed from CSS) to two independent real causes —
+`table.sheet-row` and `.artifact__body` both render real captured text
+containing n8n's own unbroken "Automated with this n8n workflow" tracking
+URL (present because of the Google Sheets finding two paragraphs up: that
+URL is literally the real Slack message text the empty-sheet auto-map bug
+copied into the sheet row), with no whitespace to wrap on and no
+`overflow-wrap` rule to fall back to. Fixed both with `overflow-wrap:
+anywhere` (plus `table-layout: fixed` on the table). Both existing
+recordings were deleted and re-captured fresh through the fully-fixed
+pipeline — not hand-patched — so `attest.json`'s `stubhouseCommit` stays
+accurate; the Sheets-node finding reproduced byte-for-byte identically on
+the fresh capture, confirming it is real, deterministic n8n behavior, not
+a fluke of the first run.
+
+**Final state**: `pnpm verify` (typecheck, 79 tests, the 5-simulator
+regeneration check, the 7-run drift check, bindings, secrets, build, and
+12 Playwright e2e tests) exits 0 against the committed branch. Full
+numbers, the redaction proof, and all sixteen defects found this session
+are in `docs/M1-REPORT.md`, including the most consequential one: a real,
+reproduced-twice defect in the *base workflow itself* (its Google Sheets
+node's missing `columns.schema` makes real n8n silently write the wrong
+data to an empty sheet, and would hard-fail on a non-empty one) —
+deliberately left uncorrected in `content/workflow.json` and documented
+instead, per "the recording is real or it does not exist" cutting both
+ways.
 
 ## 2026-08-28/29 — M0 walking skeleton + engine, from salvage, complete
 

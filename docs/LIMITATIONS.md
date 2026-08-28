@@ -35,6 +35,15 @@ included. If GoHighLevel's real `contacts/upsert` response shape has
 drifted from its public docs, nothing here would currently catch that —
 there is no live API in the loop to disagree with, in either mode.
 
+The recording did catch a different, real class of gap this session,
+worth naming here even though it lives in `docs/DEVIATIONS.md` in full:
+`rec-medspa-happy`'s Google Sheets row is not the lead's own data — a
+missing `columns.schema` in `content/workflow.json`'s Sheets node makes
+real n8n silently auto-map the wrong upstream node's JSON whenever the
+target sheet is empty (and hard-fail on a non-empty one). No simulator
+built to model *intended* behavior could have found this; only a real
+execution against real (if stubbed) API responses could.
+
 ## The simulator's per-node timings are still a stated assumption — the recordings are not
 
 `packages/engine/src/timing/modeled-v1.json` remains exactly what its own

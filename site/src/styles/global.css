@@ -483,11 +483,20 @@ table.ledger td.num {
   color: var(--ink-muted);
   display: block;
   margin-bottom: 0.3rem;
+  overflow-wrap: anywhere;
 }
 
 .artifact__body {
   font-size: 0.9375rem;
   white-space: pre-wrap;
+  /* A recording composes this text for real (Spec section 4) — e.g. the
+     Slack node's own message, which n8n appends an unbroken tracking URL
+     to ("_Automated with this <http://...|n8n workflow>_"). The simulator
+     never generates a token that long. overflow-wrap: normal (the
+     default) only breaks at spaces/hyphens, so that one URL alone forced
+     this box (and the page, at 320px) wider than the viewport until this
+     rule existed — same fix, same reason, as .sheet-row td below. */
+  overflow-wrap: anywhere;
 }
 
 .sheet-row {

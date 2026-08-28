@@ -32,10 +32,17 @@ export function modeChip(run: RunFile): ModeChip {
   }
   const sim = run.simulator;
   if (!sim) throw new Error('simulator run without simulator block');
+  // Not "because no n8n recording exists yet" -- that claim went false the
+  // moment M1 committed rec-medspa-happy/rec-medspa-slack-401 (this exact
+  // sentence, sitting on the Simulator tab right next to the Recording tab,
+  // was the bug: docs/PROGRESS.md's M1 session note). Stated instead as a
+  // fact about this run's own basis, which stays true regardless of how
+  // many recordings exist elsewhere -- nothing here can go stale again the
+  // way a world-state claim can.
   const timings =
     sim.timingTable.basis === 'recording'
       ? `per-node timings taken from recording ${sim.timingTable.recordingId}`
-      : 'per-node timings from a modeled timing table, because no n8n recording exists yet';
+      : 'per-node timings from a modeled timing table -- assumed, not measured against a real n8n execution';
   return {
     kind: 'simulator',
     title: 'Simulator',
@@ -91,11 +98,26 @@ export function neverSentStatement(run: RunFile): string | null {
   );
 }
 
-/** The flag that travels with the headline number wherever it appears. */
+/**
+ * The flag that travels with the headline number wherever it appears
+ * (dispatcher-added M1 requirement, blocking: firstTouchDispatchMs is
+ * 114-115ms *because the integrations are local stubs* -- every surface
+ * that renders the number must carry that condition on the same surface,
+ * never a bare "0.1 s" beside the 42-hour HBR benchmark). A recording's
+ * number is real wall-clock time, but everything downstream of the
+ * webhook/normalize/wait/branch nodes that actually happened -- the GHL
+ * SMS call itself -- was answered by a local stub with no network in the
+ * loop; this states that plainly every time, not just once in a footnote.
+ */
 export function numberFlag(run: RunFile): string {
-  if (run.mode === 'recording') return `measured · recording of n8n ${run.n8n?.version ?? ''}`.trim();
+  if (run.mode === 'recording') {
+    return (
+      `measured · recording of n8n ${run.n8n?.version ?? ''} · against local stubs -- ` +
+      'a real GoHighLevel round trip would add network time this number does not include'
+    ).trim();
+  }
   const basis = run.simulator?.timingTable.basis;
   return basis === 'recording'
-    ? `simulator · timings from recording ${run.simulator?.timingTable.recordingId ?? ''}`.trim()
-    : 'modeled · simulator run · no recording yet';
+    ? `simulator · timings from recording ${run.simulator?.timingTable.recordingId ?? ''} · modeled, not a measurement of any real network call`.trim()
+    : 'modeled · simulator run · no real network call of any kind happened';
 }

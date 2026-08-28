@@ -5,6 +5,7 @@ export default defineConfig({
     include: [
       'packages/**/test/**/*.test.ts',
       'scripts/**/*.test.ts',
+      'scripts/**/*.test.mjs',
       'worker/test/**/*.test.ts',
       'capture/**/test/**/*.test.mjs',
     ],

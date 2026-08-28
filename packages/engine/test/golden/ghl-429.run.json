@@ -22,7 +22,7 @@
     "timingTable": {
       "id": "modeled-v1",
       "basis": "modeled",
-      "note": "Assumed per-node durations. No n8n recording exists yet; every value here is a stated assumption, not a measurement. M1 replaces this table with one derived from the raw execution export, and the run files' labels change with it."
+      "note": "Assumed per-node durations -- a stated assumption, not a measurement of any real execution. The two real n8n recordings captured at M1 (content/runs/rec-medspa-happy/, rec-medspa-slack-401/) have not been reconciled into this table yet; see docs/DEVIATIONS.md and docs/LIMITATIONS.md for why, and content/runs/rec-medspa-happy/run.json for the real measured numbers sitting next to this modeled one."
     },
     "stubShapes": "modeled"
   },

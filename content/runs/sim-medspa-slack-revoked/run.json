@@ -1,0 +1,290 @@
+{
+  "schema": 1,
+  "id": "sim-medspa-slack-revoked",
+  "mode": "simulator",
+  "scenario": "slack-revoked",
+  "business": {
+    "name": "Radiant Aesthetics",
+    "fictional": true
+  },
+  "producedAt": "2026-08-28T00:00:00.000Z",
+  "startedAt": "2026-08-16T09:12:03.000-05:00",
+  "workflow": {
+    "id": "SpeedToLead001",
+    "name": "Speed-to-Lead — Radiant Aesthetics (demo)",
+    "source": "content/workflow.json",
+    "sha256": "b15382dd0a00d9eb8085aeae7f5d2e2ea54d38a86a3b5d5b2d0cd67ca18dfea6"
+  },
+  "simulator": {
+    "engine": "@lrd/engine",
+    "engineVersion": "0.1.0",
+    "seed": 11,
+    "timingTable": {
+      "id": "modeled-v1",
+      "basis": "modeled",
+      "note": "Assumed per-node durations. No n8n recording exists yet; every value here is a stated assumption, not a measurement. M1 replaces this table with one derived from the raw execution export, and the run files' labels change with it."
+    },
+    "stubShapes": "modeled"
+  },
+  "real": [],
+  "stubbed": [
+    "gohighlevel",
+    "slack",
+    "google-sheets",
+    "voice-ai"
+  ],
+  "simulated": [
+    "n8n",
+    "webhook",
+    "normalize",
+    "wait",
+    "branch"
+  ],
+  "faults": [
+    {
+      "seam": "slack-401",
+      "node": "Notify Owner (Slack)",
+      "detail": "Slack bot token revoked: every chat.postMessage answers 401 invalid_auth. Both Slack nodes and the error workflow share the credential."
+    }
+  ],
+  "duplicate": null,
+  "status": "error",
+  "nodes": [
+    {
+      "id": "node-webhook",
+      "name": "Lead Webhook (form / ad)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "status": "success",
+      "startedAt": "2026-08-16T09:12:03.000-05:00",
+      "finishedAt": "2026-08-16T09:12:03.006-05:00",
+      "summary": "Received POST /webhook/radiant-new-lead (128 bytes of JSON) and answered 200 immediately (responseMode: onReceived).",
+      "stub": false
+    },
+    {
+      "id": "node-normalize",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "status": "success",
+      "startedAt": "2026-08-16T09:12:03.018-05:00",
+      "finishedAt": "2026-08-16T09:12:03.041-05:00",
+      "summary": "Normalized the payload: first name \"Alex\", phone +1512•••0134 in E.164, email lower-cased, source \"website-form\", interest \"lip filler\".",
+      "stub": false
+    },
+    {
+      "id": "node-enrich",
+      "name": "Enrichment (placeholder — disabled)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "disabled",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Disabled in workflow.json: n8n passed the data through untouched. Left empty on purpose rather than faking a vendor call.",
+      "stub": false
+    },
+    {
+      "id": "node-ghl-upsert",
+      "name": "GHL: Upsert Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "success",
+      "startedAt": "2026-08-16T09:12:03.054-05:00",
+      "finishedAt": "2026-08-16T09:12:03.567-05:00",
+      "summary": "Upserted the contact in GoHighLevel: created c_18d8d72c4b625916 with tags speed-to-lead, new-web-lead.",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "headersRedacted": true,
+        "bodyPreview": "{\"firstName\":\"Alex\",\"lastName\":\"Rivera\",\"email\":\"alex.rivera@example.com\",\"phone\":\"+1512•••0134\",\"locationId\":\"loc_demo_radiant\",\"source\":\"website-form\",\"tags\"…"
+      },
+      "response": {
+        "status": 200,
+        "preview": "{\"new\":true,\"contact\":{\"id\":\"c_18d8d72c4b625916\",\"locationId\":\"loc_demo_radiant\",\"firstName\":\"Alex\",\"lastName\":\"Rivera\",\"email\":\"alex.rivera@example.com\",\"phon…"
+      }
+    },
+    {
+      "id": "node-ghl-sms",
+      "name": "GHL: Send Instant SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "success",
+      "startedAt": "2026-08-16T09:12:03.579-05:00",
+      "finishedAt": "2026-08-16T09:12:03.839-05:00",
+      "summary": "Composed the first-touch SMS to +1512•••0134 and handed it to GoHighLevel (queued as msg_8977d6aa22466929).",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "headersRedacted": true,
+        "bodyPreview": "{\"type\":\"SMS\",\"contactId\":\"c_18d8d72c4b625916\",\"message\":\"Hi Alex, it's Mia at Radiant Aesthetics — thanks for asking about lip filler. I can get you booked th…"
+      },
+      "response": {
+        "status": 200,
+        "preview": "{\"conversationId\":\"conv_26f1bc695e3b17bf\",\"messageId\":\"msg_8977d6aa22466929\",\"msg\":\"Message queued successfully.\"}"
+      }
+    },
+    {
+      "id": "node-ghl-email",
+      "name": "GHL: Send Branded Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "success",
+      "startedAt": "2026-08-16T09:12:03.852-05:00",
+      "finishedAt": "2026-08-16T09:12:04.220-05:00",
+      "summary": "Composed the branded email \"Your Radiant Aesthetics enquiry — next step inside\" to alex.rivera@example.com and handed it to GoHighLevel.",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "headersRedacted": true,
+        "bodyPreview": "{\"type\":\"Email\",\"contactId\":\"c_18d8d72c4b625916\",\"subject\":\"Your Radiant Aesthetics enquiry — next step inside\",\"emailFrom\":\"Mia at Radiant Aesthetics <hello@r…"
+      },
+      "response": {
+        "status": 200,
+        "preview": "{\"conversationId\":\"conv_26f1bc695e3b17bf\",\"messageId\":\"msg_dcc5940bf42b589d\",\"msg\":\"Message queued successfully.\",\"emailMessageId\":\"em_2dd601d7848b1a07\"}"
+      }
+    },
+    {
+      "id": "node-slack-notify",
+      "name": "Notify Owner (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "status": "error",
+      "startedAt": "2026-08-16T09:12:04.233-05:00",
+      "finishedAt": "2026-08-16T09:12:04.629-05:00",
+      "summary": "Failed: Slack answered 401 invalid_auth: the bot token is no longer valid. The execution stopped here (n8n default: no continue-on-fail).",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "headersRedacted": true,
+        "bodyPreview": "{\"channel\":\"#leads\",\"text\":\"New lead: Alex Rivera (+1512•••0134) — asked about lip filler via website-form. First-touch SMS + email already sent. No action nee…"
+      },
+      "response": {
+        "status": 401,
+        "preview": "{\"ok\":false,\"error\":\"invalid_auth\"}"
+      },
+      "error": {
+        "message": "Slack answered 401 invalid_auth: the bot token is no longer valid.",
+        "code": "invalid_auth",
+        "httpStatus": 401
+      }
+    },
+    {
+      "id": "node-sheets-log",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"Notify Owner (Slack)\".",
+      "stub": false
+    },
+    {
+      "id": "node-wait",
+      "name": "Wait 15 Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"Notify Owner (Slack)\".",
+      "stub": false
+    },
+    {
+      "id": "node-ghl-checkreply",
+      "name": "GHL: Check for Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"Notify Owner (Slack)\".",
+      "stub": false
+    },
+    {
+      "id": "node-if-replied",
+      "name": "Replied?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"Notify Owner (Slack)\".",
+      "stub": false
+    },
+    {
+      "id": "node-human-takeover",
+      "name": "Replied — Human Takes Over",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"Notify Owner (Slack)\".",
+      "stub": false
+    },
+    {
+      "id": "node-voiceai-stub",
+      "name": "Voice AI Callback (stub — configured in GHL)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"Notify Owner (Slack)\".",
+      "stub": false
+    },
+    {
+      "id": "node-slack-escalate",
+      "name": "Escalate: No Reply (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"Notify Owner (Slack)\".",
+      "stub": false
+    }
+  ],
+  "artifacts": {
+    "sms": {
+      "to": "+1512•••0134",
+      "body": "Hi Alex, it's Mia at Radiant Aesthetics — thanks for asking about lip filler. I can get you booked this week: https://book.radiant-aesthetics.example — or just reply here and I'll sort it for you."
+    },
+    "email": {
+      "subject": "Your Radiant Aesthetics enquiry — next step inside",
+      "from": "Mia at Radiant Aesthetics <hello@radiant-aesthetics.example>",
+      "preview": "Hi Alex, Thanks for reaching out about lip filler. I've just texted you as well — whichever is easier. Pick a consult time that suits you, or reply to this email and I'll book you in personally. — Mia, Radiant Aesthetics"
+    },
+    "slack": null,
+    "sheetRow": null,
+    "slackEscalation": null,
+    "errorWorkflow": {
+      "fired": true,
+      "assumed": true,
+      "trigger": {
+        "node": "Notify Owner (Slack)",
+        "message": "Slack answered 401 invalid_auth: the bot token is no longer valid."
+      },
+      "alert": {
+        "channel": "slack",
+        "status": "error",
+        "reason": "the error workflow posts through the same revoked Slack credential, so its alert failed too"
+      }
+    }
+  },
+  "metrics": {
+    "firstTouchDispatchMs": 839,
+    "ownerNotifiedMs": null,
+    "waitMs": null,
+    "totalMs": 1629
+  },
+  "redaction": {
+    "phoneMasked": true,
+    "headersRedacted": true
+  }
+}

@@ -1,0 +1,450 @@
+/*
+  Instrument-panel / flight-recorder direction, deliberately not the soft
+  gradient-card SaaS look every competitor in the sweep (GoHighLevel,
+  Podium, Birdeye, Vapi, Synthflow, Chatbase, Zapier, Make, n8n, Twilio,
+  Calendly, Intercom) shares. Time is the subject of this product, so time
+  — absolute timestamps, offsets, durations — is set in monospace as the
+  organizing device, not a decorative accent.
+
+  Color is functional-only on purpose: no invented brand accent. The
+  identity is provisional (Spec section 12; docs/DEVIATIONS.md) and picks
+  the real ink color at M1 — status colors here mean success/error/neutral
+  and nothing else.
+*/
+
+:root {
+  --paper: #faf9f6;
+  --surface: #ffffff;
+  --ink: #16171b;
+  --ink-muted: #5a5d66;
+  --ink-faint: #8a8d96;
+  --rule: #d9d7d0;
+  --rule-strong: #b9b7b0;
+  --ok: #1f6f4a;
+  --ok-bg: #eaf3ee;
+  --err: #a3311a;
+  --err-bg: #fbeeeb;
+  --stub: #55575e;
+  --stub-bg: #eeedea;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  min-width: 0;
+}
+
+main {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+a {
+  color: var(--ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+a:hover,
+a:focus-visible {
+  color: var(--ok);
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--ok);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+
+p {
+  margin: 0 0 1rem;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- site chrome ---- */
+
+.site-header {
+  border-bottom: 1px solid var(--rule);
+}
+
+.site-header__inner {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0.9rem 1.25rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.site-name {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+  color: var(--ink-muted);
+}
+
+.site-nav a {
+  font-size: 0.875rem;
+  margin-left: 1rem;
+}
+
+.site-footer {
+  border-top: 1px solid var(--rule);
+  margin-top: 3rem;
+}
+
+.site-footer__inner {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  justify-content: space-between;
+}
+
+/* ---- hero (/) ---- */
+
+.hero {
+  padding: 2.5rem 0 1.5rem;
+}
+
+.hero__eyebrow {
+  font-size: 0.9375rem;
+  color: var(--ink-muted);
+  max-width: 34rem;
+}
+
+.hero__number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: clamp(3rem, 14vw, 5rem);
+  line-height: 1;
+  margin: 0.6rem 0 0.35rem;
+  letter-spacing: -0.02em;
+}
+
+.hero__number small {
+  font-size: 0.35em;
+  font-weight: 500;
+  color: var(--ink-muted);
+  margin-left: 0.5rem;
+}
+
+.hero__flag {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--ink-faint);
+  margin-bottom: 1.25rem;
+}
+
+.hero__lede {
+  max-width: 34rem;
+  font-size: 1.0625rem;
+}
+
+.cta {
+  display: inline-block;
+  border: 1px solid var(--ink);
+  padding: 0.6rem 1.1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  margin: 0.5rem 0 0;
+  border-radius: 2px;
+}
+
+.cta:hover,
+.cta:focus-visible {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.honesty-list {
+  list-style: none;
+  margin: 2rem 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.honesty-list li {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.9375rem;
+  color: var(--ink-muted);
+}
+
+.honesty-list strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ---- /demo ---- */
+
+.mode-chip {
+  border: 1px solid var(--ink);
+  border-left-width: 4px;
+  padding: 0.75rem 1rem;
+  margin: 1.5rem 0;
+  font-size: 0.9375rem;
+  background: var(--surface);
+}
+
+.mode-chip__title {
+  display: block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  margin-bottom: 0.35rem;
+}
+
+.panel {
+  border: 1px solid var(--rule-strong);
+  margin: 1.5rem 0 2rem;
+}
+
+.panel__heading {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--rule-strong);
+  background: var(--stub-bg);
+}
+
+.system-line {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.9375rem;
+}
+
+.system-line:last-child {
+  border-bottom: none;
+}
+
+.system-line__name {
+  font-weight: 600;
+  margin-right: 0.4em;
+}
+
+.tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 2px;
+  margin-right: 0.5rem;
+  vertical-align: 1px;
+}
+
+.tag--simulated {
+  background: var(--stub-bg);
+  color: var(--stub);
+}
+
+.tag--stubbed {
+  background: var(--stub-bg);
+  color: var(--stub);
+}
+
+.system-line__text {
+  color: var(--ink-muted);
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.ledger-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--rule-strong);
+  margin: 0 0 2rem;
+}
+
+table.ledger {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 34rem;
+  font-size: 0.875rem;
+}
+
+table.ledger caption {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--rule-strong);
+  background: var(--stub-bg);
+}
+
+table.ledger th,
+table.ledger td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+table.ledger thead th {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+table.ledger tbody tr:last-child td {
+  border-bottom: none;
+}
+
+table.ledger td.num {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.status {
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.status--success {
+  color: var(--ok);
+}
+
+.status--error {
+  color: var(--err);
+}
+
+.status--disabled,
+.status--not-run {
+  color: var(--ink-faint);
+}
+
+.summary-cell {
+  color: var(--ink-muted);
+  max-width: 28rem;
+}
+
+.wait-note {
+  font-size: 0.8125rem;
+  color: var(--ink-faint);
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.artifacts {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  margin-bottom: 2rem;
+}
+
+.artifact {
+  border: 1px solid var(--rule-strong);
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+}
+
+.artifact--empty {
+  color: var(--ink-faint);
+  font-size: 0.875rem;
+  background: transparent;
+  border-style: dashed;
+}
+
+.artifact__label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  margin-bottom: 0.4rem;
+}
+
+.artifact__meta {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.artifact__body {
+  font-size: 0.9375rem;
+  white-space: pre-wrap;
+}
+
+.sheet-row {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.sheet-row th,
+.sheet-row td {
+  text-align: left;
+  padding: 0.15rem 0.4rem 0.15rem 0;
+  vertical-align: top;
+}
+
+.sheet-row th {
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .hero {
+    padding-top: 1.75rem;
+  }
+}

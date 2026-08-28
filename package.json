@@ -10,7 +10,7 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "typecheck": "pnpm -r --if-present typecheck",
+    "typecheck": "tsc -p tsconfig.json && pnpm -r --if-present typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "gen:runs": "tsx scripts/generate-runs.ts",
@@ -20,7 +20,7 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "build": "pnpm --filter @lrd/site build",
     "preview": "pnpm --filter @lrd/site preview",
-    "e2e": "playwright test",
+    "e2e": "node scripts/e2e.mjs",
     "verify": "pnpm typecheck && pnpm test && pnpm check:runs && pnpm check:drift && pnpm check:bindings && pnpm check:secrets && pnpm build && pnpm e2e"
   },
   "devDependencies": {

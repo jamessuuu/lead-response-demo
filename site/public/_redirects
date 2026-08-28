@@ -1,0 +1,4 @@
+# Cloudflare Pages redirects. Intentionally empty at M0 — every route the
+# site serves (/, /demo, /runs/:id/run.json) exists at the path it's linked
+# from, so there's nothing to redirect yet. astro.config.mjs sets
+# trailingSlash: 'never'; add rules here if a future page move needs one.

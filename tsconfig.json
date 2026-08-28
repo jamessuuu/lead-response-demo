@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // tests/e2e's page.evaluate() callbacks type-check against a DOM lib
+    // (Playwright's own types assume it); scripts/ never touches the DOM
+    // but including it there too is harmless since scripts/ has no
+    // conflicting global names.
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["scripts/**/*.ts", "tests/**/*.ts", "playwright.config.ts"]
+}

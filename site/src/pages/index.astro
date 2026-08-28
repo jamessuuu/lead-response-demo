@@ -1,0 +1,49 @@
+---
+import Base from '../layouts/Base.astro';
+import { loadRun } from '../lib/runs.ts';
+import { formatSeconds, numberFlag } from '@lrd/schema';
+
+const run = loadRun('sim-medspa-happy');
+const dispatchMs = run.metrics.firstTouchDispatchMs;
+if (dispatchMs === null) {
+  throw new Error('index.astro: sim-medspa-happy has no firstTouchDispatchMs — the hero number has nothing to render.');
+}
+const headline = formatSeconds(dispatchMs);
+const flag = numberFlag(run);
+---
+
+<Base
+  title="Lead Response Engine — demo"
+  description="HBR: the average business takes 42 hours to answer a web lead. This system dispatches the first touch in under a second of simulated time. See exactly what's real, stubbed, and simulated."
+>
+  <section class="hero">
+    <p class="hero__eyebrow">
+      HBR audited 2,241 companies: the average first response to a web lead is <strong>42 hours</strong>, and 23%
+      never respond at all (<a href="https://hbr.org/2011/03/the-short-life-of-online-sales-leads" rel="noopener"
+        >Oldroyd, McElheran &amp; Elkington, 2011</a
+      >). This one dispatches in—
+    </p>
+    <p class="hero__number" aria-label={`${headline} first-touch dispatch time`}>
+      {headline}<small>first touch</small>
+    </p>
+    <p class="hero__flag">{flag} — from content/runs/sim-medspa-happy/run.json</p>
+    <p class="hero__lede">
+      A fictional med-spa lead comes in from a website form at 9pm, after the front desk has gone home. Watch the
+      exact system that answers it — every timestamp, every message it composed, and exactly which parts are real
+      versus a labelled stand-in.
+    </p>
+    <a class="cta" href="/demo">Walk through the run →</a>
+  </section>
+
+  <ul class="honesty-list">
+    <li><strong>Radiant Aesthetics is fictional.</strong> Invented for this demo; no such business exists.</li>
+    <li>
+      <strong>This run is a simulator, not a recording.</strong> No real n8n execution exists yet (milestone M1) —
+      <code>/demo</code> says so above the fold, from the same data this page reads.
+    </li>
+    <li>
+      <strong>Nothing was sent to anyone.</strong> GoHighLevel, Slack, and Google Sheets are stand-ins in every run
+      committed so far; the messages you'll see were composed and then went nowhere.
+    </li>
+  </ul>
+</Base>

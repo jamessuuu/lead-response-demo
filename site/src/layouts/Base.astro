@@ -1,0 +1,49 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex" />
+    <!--
+      noindex on purpose for the whole M0 walking skeleton: this is not the
+      finished sales site (Spec build order M3), and nothing here should
+      out-rank the real thing once a name and domain exist (Spec section 18).
+      Remove this tag as part of the M3 launch checklist, not before.
+    -->
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <span class="site-name">lead response engine · demo</span>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="/">home</a><a href="/demo">demo</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <span
+          >A walking-skeleton demo (milestone M0). "Radiant Aesthetics" is a fictional business invented for this
+          sample — see <a href="/demo">/demo</a> for exactly what is real, stubbed, or simulated.</span
+        >
+        <span>Built by James Lorenz Santos — <a href="https://agentjames.vercel.app">portfolio</a></span>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+# Cloudflare Pages security headers (Spec section 13). script-src 'none' is
+# an honest claim at M0 — zero JS ships anywhere on this site yet. Widen it
+# only when an M1+ island actually needs to run, and narrow it back to a
+# nonce/hash rather than 'unsafe-inline' if that ever happens.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), interest-cohort=()
+  Content-Security-Policy: default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+
+# Run files are data downloads, not pages — no reason to ever index them.
+/runs/*
+  X-Robots-Tag: noindex

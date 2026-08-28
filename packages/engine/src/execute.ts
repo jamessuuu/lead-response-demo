@@ -322,9 +322,13 @@ export function execute(opts: ExecuteOptions): RunFile {
 
   const byId = new Map(events.map((e) => [e.id, e]));
   const t0 = epochMs(opts.startedAt);
+  // A node that errored produced no dispatch: gate every "did this actually
+  // happen" metric on success, not just on carrying a finishedAt (the error
+  // path timestamps the attempt too). totalMs is the exception on purpose —
+  // it is elapsed wall-clock time for the whole execution, success or not.
   const sinceT0 = (id: string): number | null => {
     const e = byId.get(id);
-    return e?.finishedAt ? epochMs(e.finishedAt) - t0 : null;
+    return e && e.status === 'success' && e.finishedAt ? epochMs(e.finishedAt) - t0 : null;
   };
   const wait = byId.get(METRIC_NODE_IDS.wait);
   let end = t0;
@@ -332,7 +336,7 @@ export function execute(opts: ExecuteOptions): RunFile {
   const metrics: Metrics = {
     firstTouchDispatchMs: sinceT0(METRIC_NODE_IDS.firstTouch),
     ownerNotifiedMs: sinceT0(METRIC_NODE_IDS.ownerNotified),
-    waitMs: wait?.startedAt && wait.finishedAt ? epochMs(wait.finishedAt) - epochMs(wait.startedAt) : null,
+    waitMs: wait?.status === 'success' && wait.startedAt && wait.finishedAt ? epochMs(wait.finishedAt) - epochMs(wait.startedAt) : null,
     totalMs: end - t0,
   };
 

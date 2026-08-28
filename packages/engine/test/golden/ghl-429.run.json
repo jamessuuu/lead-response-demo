@@ -1,0 +1,252 @@
+{
+  "schema": 1,
+  "id": "fixture-ghl-429",
+  "mode": "simulator",
+  "scenario": "ghl-429",
+  "business": {
+    "name": "Radiant Aesthetics",
+    "fictional": true
+  },
+  "producedAt": "2026-08-28T12:00:00.000Z",
+  "startedAt": "2026-08-28T21:04:17.000-05:00",
+  "workflow": {
+    "id": "SpeedToLead001",
+    "name": "Speed-to-Lead — Radiant Aesthetics (demo)",
+    "source": "content/workflow.json",
+    "sha256": "b15382dd0a00d9eb8085aeae7f5d2e2ea54d38a86a3b5d5b2d0cd67ca18dfea6"
+  },
+  "simulator": {
+    "engine": "@lrd/engine",
+    "engineVersion": "0.1.0",
+    "seed": 7,
+    "timingTable": {
+      "id": "modeled-v1",
+      "basis": "modeled",
+      "note": "Assumed per-node durations. No n8n recording exists yet; every value here is a stated assumption, not a measurement. M1 replaces this table with one derived from the raw execution export, and the run files' labels change with it."
+    },
+    "stubShapes": "modeled"
+  },
+  "real": [],
+  "stubbed": [
+    "gohighlevel",
+    "slack",
+    "google-sheets",
+    "voice-ai"
+  ],
+  "simulated": [
+    "n8n",
+    "webhook",
+    "normalize",
+    "wait",
+    "branch"
+  ],
+  "faults": [
+    {
+      "seam": "ghl-429",
+      "node": "GHL: Upsert Contact",
+      "detail": "LeadConnector answers 429 Too Many Requests. The base workflow configures no retry on this node."
+    }
+  ],
+  "duplicate": null,
+  "status": "error",
+  "nodes": [
+    {
+      "id": "node-webhook",
+      "name": "Lead Webhook (form / ad)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "status": "success",
+      "startedAt": "2026-08-28T21:04:17.000-05:00",
+      "finishedAt": "2026-08-28T21:04:17.004-05:00",
+      "summary": "Received POST /webhook/radiant-new-lead (114 bytes of JSON) and answered 200 immediately (responseMode: onReceived).",
+      "stub": false
+    },
+    {
+      "id": "node-normalize",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "status": "success",
+      "startedAt": "2026-08-28T21:04:17.012-05:00",
+      "finishedAt": "2026-08-28T21:04:17.041-05:00",
+      "summary": "Normalized the payload: first name \"Test\", phone +1512•••0199 in E.164, email lower-cased, source \"fixture\", interest \"botox\".",
+      "stub": false
+    },
+    {
+      "id": "node-enrich",
+      "name": "Enrichment (placeholder — disabled)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "disabled",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Disabled in workflow.json: n8n passed the data through untouched. Left empty on purpose rather than faking a vendor call.",
+      "stub": false
+    },
+    {
+      "id": "node-ghl-upsert",
+      "name": "GHL: Upsert Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "error",
+      "startedAt": "2026-08-28T21:04:17.055-05:00",
+      "finishedAt": "2026-08-28T21:04:17.473-05:00",
+      "summary": "Failed: The service is receiving too many requests from you (429 Too Many Requests). The execution stopped here (n8n default: no continue-on-fail).",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "headersRedacted": true,
+        "bodyPreview": "{\"firstName\":\"Test\",\"lastName\":\"Lead\",\"email\":\"test.lead@example.com\",\"phone\":\"+1512•••0199\",\"locationId\":\"loc_demo_radiant\",\"source\":\"fixture\",\"tags\":[\"speed-…"
+      },
+      "response": {
+        "status": 429,
+        "preview": "{\"statusCode\":429,\"message\":\"Too Many Requests\",\"error\":\"Too Many Requests\"}"
+      },
+      "error": {
+        "message": "The service is receiving too many requests from you (429 Too Many Requests).",
+        "code": "ERR_TOO_MANY_REQUESTS",
+        "httpStatus": 429
+      }
+    },
+    {
+      "id": "node-ghl-sms",
+      "name": "GHL: Send Instant SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"GHL: Upsert Contact\".",
+      "stub": false
+    },
+    {
+      "id": "node-ghl-email",
+      "name": "GHL: Send Branded Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"GHL: Upsert Contact\".",
+      "stub": false
+    },
+    {
+      "id": "node-slack-notify",
+      "name": "Notify Owner (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"GHL: Upsert Contact\".",
+      "stub": false
+    },
+    {
+      "id": "node-sheets-log",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"GHL: Upsert Contact\".",
+      "stub": false
+    },
+    {
+      "id": "node-wait",
+      "name": "Wait 15 Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"GHL: Upsert Contact\".",
+      "stub": false
+    },
+    {
+      "id": "node-ghl-checkreply",
+      "name": "GHL: Check for Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"GHL: Upsert Contact\".",
+      "stub": false
+    },
+    {
+      "id": "node-if-replied",
+      "name": "Replied?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"GHL: Upsert Contact\".",
+      "stub": false
+    },
+    {
+      "id": "node-human-takeover",
+      "name": "Replied — Human Takes Over",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"GHL: Upsert Contact\".",
+      "stub": false
+    },
+    {
+      "id": "node-voiceai-stub",
+      "name": "Voice AI Callback (stub — configured in GHL)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"GHL: Upsert Contact\".",
+      "stub": false
+    },
+    {
+      "id": "node-slack-escalate",
+      "name": "Escalate: No Reply (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not reached: the execution stopped at \"GHL: Upsert Contact\".",
+      "stub": false
+    }
+  ],
+  "artifacts": {
+    "sms": null,
+    "email": null,
+    "slack": null,
+    "sheetRow": null,
+    "slackEscalation": null,
+    "errorWorkflow": {
+      "fired": true,
+      "assumed": true,
+      "trigger": {
+        "node": "GHL: Upsert Contact",
+        "message": "The service is receiving too many requests from you (429 Too Many Requests)."
+      },
+      "alert": {
+        "channel": "slack",
+        "status": "success"
+      }
+    }
+  },
+  "metrics": {
+    "firstTouchDispatchMs": null,
+    "ownerNotifiedMs": null,
+    "waitMs": null,
+    "totalMs": 473
+  },
+  "redaction": {
+    "phoneMasked": true,
+    "headersRedacted": true
+  }
+}

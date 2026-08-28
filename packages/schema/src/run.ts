@@ -267,7 +267,7 @@ export const RunFile = RunFileObject.superRefine((run, ctx) => {
   const t0 = first?.startedAt ? epochMs(first.startedAt) : null;
   const sinceT0 = (id: string): number | null => {
     const n = byId.get(id);
-    if (!n || n.finishedAt === null || t0 === null) return null;
+    if (!n || n.status !== 'success' || n.finishedAt === null || t0 === null) return null;
     return epochMs(n.finishedAt) - t0;
   };
   const check = (key: keyof Metrics, value: number | null) => {
@@ -280,7 +280,7 @@ export const RunFile = RunFileObject.superRefine((run, ctx) => {
   const wait = byId.get(METRIC_NODE_IDS.wait);
   check(
     'waitMs',
-    wait && wait.startedAt !== null && wait.finishedAt !== null
+    wait && wait.status === 'success' && wait.startedAt !== null && wait.finishedAt !== null
       ? epochMs(wait.finishedAt) - epochMs(wait.startedAt)
       : null,
   );
@@ -292,14 +292,14 @@ export const RunFile = RunFileObject.superRefine((run, ctx) => {
   }
   check('totalMs', end !== null && t0 !== null ? end - t0 : null);
 
-  // --- artifacts exist exactly for the nodes that ran
-  const ran = (id: string) => {
-    const n = byId.get(id);
-    return !!n && (n.status === 'success' || n.status === 'error');
-  };
+  // --- artifacts exist exactly for the nodes that succeeded. A node that
+  // errored produced no artifact by construction (execute.ts assigns the
+  // artifact only after the stub call answers, never on the throw path) —
+  // an errored Slack call must not be credited as a notification sent.
+  const succeeded = (id: string) => byId.get(id)?.status === 'success';
   for (const [key, id] of Object.entries(ARTIFACT_NODE_IDS) as Array<[keyof typeof ARTIFACT_NODE_IDS, string]>) {
-    if (byId.has(id) && ran(id) !== (run.artifacts[key] !== null)) {
-      issue(ctx, `artifacts.${key} is present exactly when ${id} ran`, ['artifacts', key]);
+    if (byId.has(id) && succeeded(id) !== (run.artifacts[key] !== null)) {
+      issue(ctx, `artifacts.${key} is present exactly when ${id} succeeded`, ['artifacts', key]);
     }
   }
 });

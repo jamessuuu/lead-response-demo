@@ -1,0 +1,345 @@
+{
+  "schema": 1,
+  "id": "fixture-duplicate",
+  "mode": "simulator",
+  "scenario": "duplicate",
+  "business": {
+    "name": "Radiant Aesthetics",
+    "fictional": true
+  },
+  "producedAt": "2026-08-28T12:00:00.000Z",
+  "startedAt": "2026-08-28T21:04:18.400-05:00",
+  "workflow": {
+    "id": "SpeedToLead001",
+    "name": "Speed-to-Lead — Radiant Aesthetics (demo)",
+    "source": "content/workflow.json",
+    "sha256": "b15382dd0a00d9eb8085aeae7f5d2e2ea54d38a86a3b5d5b2d0cd67ca18dfea6"
+  },
+  "simulator": {
+    "engine": "@lrd/engine",
+    "engineVersion": "0.1.0",
+    "seed": 7,
+    "timingTable": {
+      "id": "modeled-v1",
+      "basis": "modeled",
+      "note": "Assumed per-node durations. No n8n recording exists yet; every value here is a stated assumption, not a measurement. M1 replaces this table with one derived from the raw execution export, and the run files' labels change with it."
+    },
+    "stubShapes": "modeled"
+  },
+  "real": [],
+  "stubbed": [
+    "gohighlevel",
+    "slack",
+    "google-sheets",
+    "voice-ai"
+  ],
+  "simulated": [
+    "n8n",
+    "webhook",
+    "normalize",
+    "wait",
+    "branch"
+  ],
+  "faults": [
+    {
+      "seam": "duplicate-webhook",
+      "node": "Lead Webhook (form / ad)",
+      "detail": "The same payload was delivered again 1400 ms after execution fixture-happy (form double-submit). n8n starts a second execution; nothing in the workflow dedupes it."
+    }
+  ],
+  "duplicate": {
+    "of": "fixture-happy",
+    "deliveredAfterMs": 1400,
+    "cause": "form double-submit"
+  },
+  "status": "success",
+  "nodes": [
+    {
+      "id": "node-webhook",
+      "name": "Lead Webhook (form / ad)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "status": "success",
+      "startedAt": "2026-08-28T21:04:18.400-05:00",
+      "finishedAt": "2026-08-28T21:04:18.404-05:00",
+      "summary": "Received POST /webhook/radiant-new-lead (114 bytes of JSON) and answered 200 immediately (responseMode: onReceived). This is a second delivery of the same payload, 1400 ms after execution fixture-happy; n8n started a new execution because nothing dedupes at the webhook.",
+      "stub": false
+    },
+    {
+      "id": "node-normalize",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "status": "success",
+      "startedAt": "2026-08-28T21:04:18.412-05:00",
+      "finishedAt": "2026-08-28T21:04:18.441-05:00",
+      "summary": "Normalized the payload: first name \"Test\", phone +1512•••0199 in E.164, email lower-cased, source \"fixture\", interest \"botox\".",
+      "stub": false
+    },
+    {
+      "id": "node-enrich",
+      "name": "Enrichment (placeholder — disabled)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "disabled",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Disabled in workflow.json: n8n passed the data through untouched. Left empty on purpose rather than faking a vendor call.",
+      "stub": false
+    },
+    {
+      "id": "node-ghl-upsert",
+      "name": "GHL: Upsert Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "success",
+      "startedAt": "2026-08-28T21:04:18.455-05:00",
+      "finishedAt": "2026-08-28T21:04:18.873-05:00",
+      "summary": "Upserted the contact in GoHighLevel: matched existing c_c9e03c786202e0e6 and updated it (no duplicate contact).",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "headersRedacted": true,
+        "bodyPreview": "{\"firstName\":\"Test\",\"lastName\":\"Lead\",\"email\":\"test.lead@example.com\",\"phone\":\"+1512•••0199\",\"locationId\":\"loc_demo_radiant\",\"source\":\"fixture\",\"tags\":[\"speed-…"
+      },
+      "response": {
+        "status": 200,
+        "preview": "{\"new\":false,\"contact\":{\"id\":\"c_c9e03c786202e0e6\",\"locationId\":\"loc_demo_radiant\",\"firstName\":\"Test\",\"lastName\":\"Lead\",\"email\":\"test.lead@example.com\",\"phone\":…"
+      }
+    },
+    {
+      "id": "node-ghl-sms",
+      "name": "GHL: Send Instant SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "success",
+      "startedAt": "2026-08-28T21:04:18.884-05:00",
+      "finishedAt": "2026-08-28T21:04:19.243-05:00",
+      "summary": "Composed the first-touch SMS to +1512•••0199 and handed it to GoHighLevel (queued as msg_38b42c835484f3e3).",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "headersRedacted": true,
+        "bodyPreview": "{\"type\":\"SMS\",\"contactId\":\"c_c9e03c786202e0e6\",\"message\":\"Hi Test, it's Mia at Radiant Aesthetics — thanks for asking about botox. I can get you booked this we…"
+      },
+      "response": {
+        "status": 200,
+        "preview": "{\"conversationId\":\"conv_8ad6060d8715ef7f\",\"messageId\":\"msg_38b42c835484f3e3\",\"msg\":\"Message queued successfully.\"}"
+      }
+    },
+    {
+      "id": "node-ghl-email",
+      "name": "GHL: Send Branded Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "success",
+      "startedAt": "2026-08-28T21:04:19.252-05:00",
+      "finishedAt": "2026-08-28T21:04:19.548-05:00",
+      "summary": "Composed the branded email \"Your Radiant Aesthetics enquiry — next step inside\" to test.lead@example.com and handed it to GoHighLevel.",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "headersRedacted": true,
+        "bodyPreview": "{\"type\":\"Email\",\"contactId\":\"c_c9e03c786202e0e6\",\"subject\":\"Your Radiant Aesthetics enquiry — next step inside\",\"emailFrom\":\"Mia at Radiant Aesthetics <hello@r…"
+      },
+      "response": {
+        "status": 200,
+        "preview": "{\"conversationId\":\"conv_8ad6060d8715ef7f\",\"messageId\":\"msg_48c1e89af9ed0256\",\"msg\":\"Message queued successfully.\",\"emailMessageId\":\"em_01c567fbb5522e53\"}"
+      }
+    },
+    {
+      "id": "node-slack-notify",
+      "name": "Notify Owner (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "status": "success",
+      "startedAt": "2026-08-28T21:04:19.561-05:00",
+      "finishedAt": "2026-08-28T21:04:19.823-05:00",
+      "summary": "Posted to #leads: \"New lead: Test Lead (+1512•••0199) — asked about botox via fixture. First-touch SMS + email alr…\"",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "headersRedacted": true,
+        "bodyPreview": "{\"channel\":\"#leads\",\"text\":\"New lead: Test Lead (+1512•••0199) — asked about botox via fixture. First-touch SMS + email already sent. No action needed unless t…"
+      },
+      "response": {
+        "status": 200,
+        "preview": "{\"ok\":true,\"channel\":\"#leads\",\"ts\":\"1787969059.069586\",\"message\":{\"type\":\"message\",\"text\":\"New lead: Test Lead (+1512•••0199) — asked about botox via fixture. …"
+      }
+    },
+    {
+      "id": "node-sheets-log",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "status": "success",
+      "startedAt": "2026-08-28T21:04:19.839-05:00",
+      "finishedAt": "2026-08-28T21:04:20.234-05:00",
+      "summary": "Appended one row (8 columns) to sheet \"Leads\" of spreadsheet 1DEMO-radiant-leads-log.",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1DEMO-radiant-leads-log/values/Leads:append?valueInputOption=USER_ENTERED",
+        "headersRedacted": true,
+        "bodyPreview": "{\"values\":[[\"2026-08-29T02:04:18.412Z\",\"Test\",\"Lead\",\"+1512•••0199\",\"test.lead@example.com\",\"botox\",\"fixture\",\"SMS + email (automated)\"]]}"
+      },
+      "response": {
+        "status": 200,
+        "preview": "{\"spreadsheetId\":\"1DEMO-radiant-leads-log\",\"tableRange\":\"Leads!A1:H212\",\"updates\":{\"spreadsheetId\":\"1DEMO-radiant-leads-log\",\"updatedRange\":\"Leads!A213:H213\",\"…"
+      }
+    },
+    {
+      "id": "node-wait",
+      "name": "Wait 15 Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "status": "success",
+      "startedAt": "2026-08-28T21:04:20.247-05:00",
+      "finishedAt": "2026-08-28T21:19:20.247-05:00",
+      "summary": "Held the execution for 15 minutes (workflow parameter), then resumed.",
+      "stub": false
+    },
+    {
+      "id": "node-ghl-checkreply",
+      "name": "GHL: Check for Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "status": "success",
+      "startedAt": "2026-08-28T21:19:20.263-05:00",
+      "finishedAt": "2026-08-28T21:19:20.699-05:00",
+      "summary": "Searched the contact's conversation: last message direction \"outbound\".",
+      "stub": true,
+      "request": {
+        "method": "GET",
+        "url": "https://services.leadconnectorhq.com/conversations/search?locationId=loc_demo_radiant&contactId=c_c9e03c786202e0e6",
+        "headersRedacted": true
+      },
+      "response": {
+        "status": 200,
+        "preview": "{\"conversations\":[{\"id\":\"conv_8ad6060d8715ef7f\",\"contactId\":\"c_c9e03c786202e0e6\",\"locationId\":\"loc_demo_radiant\",\"lastMessageType\":\"TYPE_SMS\",\"lastMessageDirec…"
+      }
+    },
+    {
+      "id": "node-if-replied",
+      "name": "Replied?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "status": "success",
+      "startedAt": "2026-08-28T21:19:20.714-05:00",
+      "finishedAt": "2026-08-28T21:19:20.717-05:00",
+      "summary": "Evaluated Replied? as false: lastMessageDirection was \"outbound\", so the execution continued on the no-reply branch.",
+      "stub": false
+    },
+    {
+      "id": "node-human-takeover",
+      "name": "Replied — Human Takes Over",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "status": "not-run",
+      "startedAt": null,
+      "finishedAt": null,
+      "summary": "Not taken: \"Replied?\" evaluated false.",
+      "stub": false
+    },
+    {
+      "id": "node-voiceai-stub",
+      "name": "Voice AI Callback (stub — configured in GHL)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "status": "success",
+      "startedAt": "2026-08-28T21:19:20.733-05:00",
+      "finishedAt": "2026-08-28T21:19:20.734-05:00",
+      "summary": "NoOp: STUB. See sticky note: the Voice AI agent is configured inside GHL, not built in n8n. This marks the handoff point.",
+      "stub": true
+    },
+    {
+      "id": "node-slack-escalate",
+      "name": "Escalate: No Reply (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "status": "success",
+      "startedAt": "2026-08-28T21:19:20.746-05:00",
+      "finishedAt": "2026-08-28T21:19:21.108-05:00",
+      "summary": "Posted to #leads: \"No reply after 15 min from Test (+1512•••0199). Voice AI callback triggered (GHL-side). Worth a…\"",
+      "stub": true,
+      "request": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "headersRedacted": true,
+        "bodyPreview": "{\"channel\":\"#leads\",\"text\":\"No reply after 15 min from Test (+1512•••0199). Voice AI callback triggered (GHL-side). Worth a personal follow-up if the callback …"
+      },
+      "response": {
+        "status": 200,
+        "preview": "{\"ok\":true,\"channel\":\"#leads\",\"ts\":\"1787969961.053757\",\"message\":{\"type\":\"message\",\"text\":\"No reply after 15 min from Test (+1512•••0199). Voice AI callback tr…"
+      }
+    }
+  ],
+  "artifacts": {
+    "sms": {
+      "to": "+1512•••0199",
+      "body": "Hi Test, it's Mia at Radiant Aesthetics — thanks for asking about botox. I can get you booked this week: https://book.radiant-aesthetics.example — or just reply here and I'll sort it for you."
+    },
+    "email": {
+      "subject": "Your Radiant Aesthetics enquiry — next step inside",
+      "from": "Mia at Radiant Aesthetics <hello@radiant-aesthetics.example>",
+      "preview": "Hi Test, Thanks for reaching out about botox. I've just texted you as well — whichever is easier. Pick a consult time that suits you, or reply to this email and I'll book you in personally. — Mia, Radiant Aesthetics"
+    },
+    "slack": {
+      "channel": "#leads",
+      "text": "New lead: Test Lead (+1512•••0199) — asked about botox via fixture. First-touch SMS + email already sent. No action needed unless they reply."
+    },
+    "sheetRow": [
+      {
+        "column": "receivedAt",
+        "value": "2026-08-29T02:04:18.412Z"
+      },
+      {
+        "column": "firstName",
+        "value": "Test"
+      },
+      {
+        "column": "lastName",
+        "value": "Lead"
+      },
+      {
+        "column": "phone",
+        "value": "+1512•••0199"
+      },
+      {
+        "column": "email",
+        "value": "test.lead@example.com"
+      },
+      {
+        "column": "interest",
+        "value": "botox"
+      },
+      {
+        "column": "source",
+        "value": "fixture"
+      },
+      {
+        "column": "firstTouch",
+        "value": "SMS + email (automated)"
+      }
+    ],
+    "slackEscalation": {
+      "channel": "#leads",
+      "text": "No reply after 15 min from Test (+1512•••0199). Voice AI callback triggered (GHL-side). Worth a personal follow-up if the callback doesn't land."
+    },
+    "errorWorkflow": null
+  },
+  "metrics": {
+    "firstTouchDispatchMs": 843,
+    "ownerNotifiedMs": 1423,
+    "waitMs": 900000,
+    "totalMs": 902708
+  },
+  "redaction": {
+    "phoneMasked": true,
+    "headersRedacted": true
+  }
+}

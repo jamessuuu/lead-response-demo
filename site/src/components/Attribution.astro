@@ -1,0 +1,45 @@
+---
+/**
+ * attribution-kit v1 — Astro. Vendored from ~/.claude/harness-dist/attribution/Attribution.astro; re-copy, do not
+ * hand-edit. Renders at build time, so the links are in the static HTML. The mark draws in `currentColor` and takes
+ * its amber from `--aj-attribution-signal` (#B45309 on light ground, #F59E0B on dark). Inline text on purpose: the
+ * links stay display:inline (the WCAG 2.5.8 inline-text exemption), so do not turn it into a flex row.
+ */
+interface Props {
+  size?: number;
+  class?: string;
+}
+const { size = 20, class: className = "" } = Astro.props;
+const NAME = "James Lorenz Santos";
+const PORTFOLIO = "https://agentjames.vercel.app";
+const LINKEDIN = "https://www.linkedin.com/in/james-lorenz-santos-720776251/";
+const full = size >= 40;
+---
+
+<p class:list={["aj-attribution", className]}>
+  {full ? (
+    <svg class="aj-attribution__mark aj-attribution__mark--full" viewBox="0 0 64 64" width={size} height={size} role="img" aria-label="Agent James">
+      <path fill="currentColor" d="M5.76 19.74h8v3.008h-8zM50.24 19.74h8v3.008h-8zM19.74 5.76h3.008v8H19.74zM19.74 50.24h3.008v8H19.74zM5.76 26.91h8v3.008h-8zM50.24 26.91h8v3.008h-8zM26.91 5.76h3.008v8H26.91zM26.91 50.24h3.008v8H26.91zM5.76 34.08h8v3.008h-8zM50.24 34.08h8v3.008h-8zM34.08 5.76h3.008v8H34.08zM34.08 50.24h3.008v8H34.08zM5.76 41.25h8v3.008h-8zM50.24 41.25h8v3.008h-8zM41.25 5.76h3.008v8H41.25zM41.25 50.24h3.008v8H41.25z" />
+      <rect x="14.08" y="14.08" width="35.84" height="35.84" fill="none" stroke="currentColor" stroke-width="3.008" />
+      <path d="M37.73 20.89 V35.58 a7.88 7.88 0 0 1 -7.88 7.88 H26.27" fill="none" stroke="currentColor" stroke-width="3.968" stroke-linecap="butt" />
+      <rect x="17.31" y="17.31" width="4.66" height="4.66" fill="var(--aj-attribution-signal, #B45309)" />
+    </svg>
+  ) : (
+    <svg class="aj-attribution__mark" viewBox="0 0 32 32" width={size} height={size} role="img" aria-label="Agent James">
+      <path fill="currentColor" d="M1 10h3v4H1zM28 10h3v4h-3zM10 1h4v3h-4zM10 28h4v3h-4zM1 18h3v4H1zM28 18h3v4h-3zM18 1h4v3h-4zM18 28h4v3h-4z" />
+      <path fill="currentColor" fill-rule="evenodd" d="M5 4h22a1 1 0 0 1 1 1v22a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM18.3 9h3.4v8a5.7 5.7 0 0 1-5.7 5.7H12v-3.4h4a2.3 2.3 0 0 0 2.3-2.3z" />
+      <rect x="6.5" y="6.5" width="3.5" height="3.5" fill="var(--aj-attribution-signal, #B45309)" />
+    </svg>
+  )}
+  Built by <a href={PORTFOLIO} rel="me noopener">{NAME}</a><span class="aj-attribution__sep" aria-hidden="true">&middot;</span><a href={LINKEDIN} rel="me noopener" target="_blank">LinkedIn</a>
+</p>
+
+<style is:global>
+  .aj-attribution { margin: 0; font: inherit; line-height: 1.5; color: inherit; }
+  .aj-attribution__mark { display: inline-block; width: 20px; height: 20px; vertical-align: -0.3em; margin-right: 0.45em; }
+  .aj-attribution__mark--full { width: 48px; height: 48px; vertical-align: middle; }
+  .aj-attribution a { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; }
+  .aj-attribution a:hover { text-decoration-thickness: 2px; }
+  .aj-attribution a:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  .aj-attribution__sep { margin: 0 0.35em; }
+</style>

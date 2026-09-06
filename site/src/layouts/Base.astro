@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import Attribution from '../components/Attribution.astro';
 
 interface Props {
   title: string;
@@ -43,7 +44,7 @@ const { title, description } = Astro.props;
           business invented for this sample — see <a href="/demo">/demo</a> for exactly what is real, stubbed, or
           simulated.</span
         >
-        <span>Built by James Lorenz Santos — <a href="https://agentjames.vercel.app">portfolio</a></span>
+        <Attribution />
       </div>
     </footer>
   </body>

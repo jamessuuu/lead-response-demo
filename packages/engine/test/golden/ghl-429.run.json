@@ -13,7 +13,7 @@
     "id": "SpeedToLead001",
     "name": "Speed-to-Lead — Radiant Aesthetics (demo)",
     "source": "content/workflow.json",
-    "sha256": "b15382dd0a00d9eb8085aeae7f5d2e2ea54d38a86a3b5d5b2d0cd67ca18dfea6"
+    "sha256": "70fbaef7197f5a9a518043d63c942200a4a0732ce665e45478b9a49a47058d28"
   },
   "simulator": {
     "engine": "@lrd/engine",

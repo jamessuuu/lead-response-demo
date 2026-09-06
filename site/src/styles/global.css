@@ -216,13 +216,18 @@ p {
 
 /* ---- /demo ---- */
 
+/* A role="note" callout. It used to carry a 4px left border, which is the
+   single most recognizable tell of a generated UI and was the only
+   border-left in this stylesheet -- a one-off, not a design language. The
+   tint is how this system already distinguishes a secondary block
+   (.panel__heading uses the same token), so the note now earns its
+   separation the same way the rest of the page does. */
 .mode-chip {
   border: 1px solid var(--ink);
-  border-left-width: 4px;
   padding: 0.75rem 1rem;
   margin: 1.5rem 0;
   font-size: 0.9375rem;
-  background: var(--surface);
+  background: var(--stub-bg);
 }
 
 .mode-chip__title {
